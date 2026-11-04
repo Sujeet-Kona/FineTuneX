@@ -150,4 +150,3 @@ def test_rejects_complex_exponentiation_result():
 def test_rejects_exponentiation_overflow():
     with pytest.raises(FinQAExecutionError):
         execute_program("exp(10, 10000)", [])
-\n
