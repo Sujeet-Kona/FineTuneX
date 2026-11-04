@@ -146,7 +146,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--checkpoint",
         type=Path,
-        default=Path("artifacts/checkpoints/pilot-32"),
+        default=Path("artifacts/checkpoints/v3-pilot-32"),
         help="LoRA checkpoint directory.",
     )
     parser.add_argument(
@@ -163,7 +163,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("artifacts/evaluations/pilot-32"),
+        default=Path("artifacts/evaluation/v3-adapter-32"),
         help="Directory for predictions and summary.",
     )
     parser.add_argument(
