@@ -33,10 +33,12 @@ def make_record(example_id="example-1", question="What is the change?"):
         },
         "program": "subtract(125, 100), divide(#0, 100)",
         "program_re": "divide(subtract(125, 100), 100)",
-        "gold_inds": json.dumps({
-            "table_1": "revenue row",
-            "table_2": "comparison row",
-        }),
+        "gold_inds": json.dumps(
+            {
+                "table_1": "revenue row",
+                "table_2": "comparison row",
+            }
+        ),
     }
 
 
@@ -44,11 +46,13 @@ def test_evidence_validator_accepts_negative_text_index():
     record = make_record()
     record["pre_text"] = ["First passage"]
     record["post_text"] = ["Last passage"]
-    record["gold_inds"] = json.dumps({
-        "text_-1": "Last passage",
-        "table_1": "revenue row",
-        "table_2": "comparison row",
-    })
+    record["gold_inds"] = json.dumps(
+        {
+            "text_-1": "Last passage",
+            "table_1": "revenue row",
+            "table_2": "comparison row",
+        }
+    )
     record["ann_text_rows"] = [-1]
 
     counts = _validate_evidence_annotations(record)
@@ -102,11 +106,13 @@ def test_evidence_validator_rejects_annotation_not_in_gold_inds():
 
 
 def make_dataset():
-    return DatasetDict({
-        "train": Dataset.from_list([make_record("train-1")]),
-        "validation": Dataset.from_list([make_record("validation-1")]),
-        "test": Dataset.from_list([make_record("test-1")]),
-    })
+    return DatasetDict(
+        {
+            "train": Dataset.from_list([make_record("train-1")]),
+            "validation": Dataset.from_list([make_record("validation-1")]),
+            "test": Dataset.from_list([make_record("test-1")]),
+        }
+    )
 
 
 def test_validate_accepts_complete_official_split_structure():
@@ -140,10 +146,12 @@ def test_validate_rejects_missing_required_field():
 
 def test_validate_rejects_duplicate_ids_within_split():
     dataset = make_dataset()
-    dataset["train"] = Dataset.from_list([
-        make_record("duplicate"),
-        make_record("duplicate"),
-    ])
+    dataset["train"] = Dataset.from_list(
+        [
+            make_record("duplicate"),
+            make_record("duplicate"),
+        ]
+    )
 
     with pytest.raises(FinQADatasetError, match="duplicate example IDs"):
         validate_dataset(dataset)
@@ -151,9 +159,11 @@ def test_validate_rejects_duplicate_ids_within_split():
 
 def test_validate_rejects_cross_split_id_overlap():
     dataset = make_dataset()
-    dataset["validation"] = Dataset.from_list([
-        make_record("train-1"),
-    ])
+    dataset["validation"] = Dataset.from_list(
+        [
+            make_record("train-1"),
+        ]
+    )
 
     with pytest.raises(FinQADatasetError, match="ID overlap"):
         validate_dataset(dataset)
@@ -193,10 +203,12 @@ def test_audit_detects_cross_split_duplicate_questions():
     first = make_record("train-1", "What is the change?")
     second = make_record("test-1", "  WHAT IS THE CHANGE? ")
 
-    audit = audit_dataset({
-        "train": [first],
-        "test": [second],
-    })
+    audit = audit_dataset(
+        {
+            "train": [first],
+            "test": [second],
+        }
+    )
 
     assert audit["cross_split_duplicate_question_count"] == 1
 
@@ -230,9 +242,7 @@ def test_prepare_writes_original_records_and_manifest(tmp_path, monkeypatch):
     assert manifest["examples_removed"] == 0
     assert manifest["official_splits_preserved"] is True
 
-    record = json.loads(
-        (output_dir / "train.jsonl").read_text(encoding="utf-8")
-    )
+    record = json.loads((output_dir / "train.jsonl").read_text(encoding="utf-8"))
 
     assert record["program"] == "subtract(125, 100), divide(#0, 100)"
     assert record["program_re"] == "divide(subtract(125, 100), 100)"
@@ -246,9 +256,11 @@ def test_evidence_validator_preserves_duplicate_annotation_indices():
         "pre_text": [],
         "post_text": [],
         "table": [["Revenue"], ["Profit"], ["Assets"], ["Debt"], ["Credit"]],
-        "gold_inds": json.dumps({
-            "table_4": "credit derivatives row",
-        }),
+        "gold_inds": json.dumps(
+            {
+                "table_4": "credit derivatives row",
+            }
+        ),
         "ann_text_rows": [],
         "ann_table_rows": [4, 4],
     }
