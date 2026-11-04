@@ -139,8 +139,9 @@ python scripts/evaluate_gold_programs.py
 The audit compares the project executor with an independent interpreter of
 the upstream FinQA evaluator's arithmetic and table semantics. Its report
 separates expected-answer mismatches from disagreements between the two
-executors. It is restricted to train and validation; the official test split
-is kept out of diagnostic iteration.
+executors. The current command is restricted to train and validation. A prior one-off
+executor QA run also inspected test labels, so do not describe the test split
+as a pristine untouched holdout or use it for model-selection decisions.
 
 ## Evidence retrieval audit
 
@@ -225,7 +226,7 @@ are not already present in the mounted cache. The service listens on port
 - [x] Repository foundation and pinned FinQA/model revisions.
 - [x] FinQA preprocessing pipeline with train/validation provenance and test-split isolation.
 - [x] FinQA program parser and deterministic executor.
-- [x] Gold-program execution audit on train and validation splits; test split remains held out.
+- [x] Gold-program executor audit now restricted to train and validation; prior one-off QA also inspected test labels.
 - [x] Versioned v3 reasoning prompt and controlled 32-example pilot.
 - [x] Identified and reproduced the v3 training/inference evidence-budget mismatch.
 - [x] Implemented v4 target-independent prompt budgeting across preprocessing, evaluation, and API.
