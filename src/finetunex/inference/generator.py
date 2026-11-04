@@ -405,7 +405,7 @@ def load_base_inference_components(
         "base_dtype": loading["dtype"],
         "training_config": {"max_sequence_length": max_sequence_length},
     }
-    print("\\n===== BASE MODEL SUMMARY =====")
+    print("\n===== BASE MODEL SUMMARY =====")
     print("Model:", model_name)
     print("Revision:", revision)
     print("Device:", device)
