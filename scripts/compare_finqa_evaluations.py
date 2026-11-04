@@ -110,17 +110,17 @@ def main() -> None:
     parser.add_argument(
         "--base-dir",
         type=Path,
-        default=Path("artifacts/evaluation/v3-base-32"),
+        default=Path("artifacts/evaluation/v4-base-32"),
     )
     parser.add_argument(
         "--adapter-dir",
         type=Path,
-        default=Path("artifacts/evaluation/v3-adapter-32"),
+        default=Path("artifacts/evaluation/v4-adapter-32"),
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("artifacts/evaluation/v3-paired-comparison.json"),
+        default=Path("artifacts/evaluation/v4-paired-comparison.json"),
     )
     args = parser.parse_args()
 
