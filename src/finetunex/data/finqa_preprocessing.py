@@ -197,10 +197,6 @@ def preprocess_record(
     def count_tokens(text: str) -> int:
         return len(tokenizer.encode(text, add_special_tokens=False))
 
-    @cache
-    def count_tokens(text: str) -> int:
-        return len(tokenizer.encode(text, add_special_tokens=False))
-
     passages = record["pre_text"] + record["post_text"]
     table = record["table"]
     complete_table = "\n".join(" | ".join(row) for row in table)
