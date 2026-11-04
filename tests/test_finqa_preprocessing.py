@@ -75,6 +75,7 @@ def preprocess(record=None, **kwargs):
         split="train",
         tokenizer_name="Qwen/Qwen3-0.6B",
         tokenizer_revision="c1899de289a04d12100db370d81485cdf75e47ca",
+        max_sequence_length=4096,
         **kwargs,
     )
 
