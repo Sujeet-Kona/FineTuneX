@@ -131,10 +131,17 @@ def test_reduces_evidence_budget_to_fit_sequence_without_truncation():
     record = make_record()
     record["pre_text"] = ["Revenue " + "growth " * 600]
 
+    no_evidence = preprocess(record, evidence_budget=0)["metadata"]
+    full_evidence = preprocess(record, evidence_budget=1024)["metadata"]
+    assert full_evidence["sequence_length"] > no_evidence["sequence_length"]
+
+    max_sequence_length = (
+        no_evidence["sequence_length"] + full_evidence["sequence_length"]
+    ) // 2
     result = preprocess(
         record,
         evidence_budget=1024,
-        max_sequence_length=2600,
+        max_sequence_length=max_sequence_length,
     )
 
     metadata = result["metadata"]
@@ -142,7 +149,7 @@ def test_reduces_evidence_budget_to_fit_sequence_without_truncation():
     assert metadata["effective_evidence_budget"] < metadata["evidence_budget"]
     assert metadata["evidence_budget_reductions"] > 0
     assert metadata["evidence_tokens"] <= metadata["effective_evidence_budget"]
-    assert metadata["sequence_length"] <= 2600
+    assert metadata["sequence_length"] <= max_sequence_length
 
 
 def test_oversized_table_uses_header_grounded_row_fallback():
