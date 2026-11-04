@@ -1,7 +1,7 @@
-"""Independent compatibility interpreter for the upstream FinQA evaluator.
+"""Independent execution-semantics port for the upstream FinQA evaluator.
 
-This small implementation mirrors arithmetic and table-cell semantics in
-FinQA's public code/evaluate/evaluate.py. It cross-checks gold programs only.
+It reuses the validated project parser but separately implements arithmetic
+and table-cell behavior from FinQA's public evaluator. It audits gold programs.
 """
 
 from __future__ import annotations
