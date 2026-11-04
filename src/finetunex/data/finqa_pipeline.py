@@ -34,6 +34,136 @@ REQUIRED_FIELDS = {
 EXPECTED_SPLITS = {"train", "validation", "test"}
 
 
+def _validate_evidence_annotations(record: dict[str, Any]) -> dict[str, int]:
+    """Validate gold evidence references and annotation-array consistency."""
+    import re
+
+    example_id = record.get("id", "<unknown>")
+    annotations_raw = record.get("gold_inds")
+
+    try:
+        annotations = (
+            json.loads(annotations_raw)
+            if isinstance(annotations_raw, str)
+            else annotations_raw
+        )
+    except json.JSONDecodeError as exc:
+        raise FinQADatasetError(
+            f"{example_id}: gold_inds is not valid JSON."
+        ) from exc
+
+    if not isinstance(annotations, dict):
+        raise FinQADatasetError(
+            f"{example_id}: gold_inds must be a JSON object."
+        )
+
+    pre_text = record.get("pre_text")
+    post_text = record.get("post_text")
+    table = record.get("table")
+
+    if not isinstance(pre_text, list) or not isinstance(post_text, list):
+        raise FinQADatasetError(
+            f"{example_id}: pre_text and post_text must be lists."
+        )
+
+    if not isinstance(table, list):
+        raise FinQADatasetError(
+            f"{example_id}: table must be a list."
+        )
+
+    combined_text = pre_text + post_text
+    gold_text_indices = set()
+    gold_table_indices = set()
+
+    for key, description in annotations.items():
+        text_match = re.fullmatch(r"text_(-?\d+)", key)
+        table_match = re.fullmatch(r"table_(\d+)", key)
+
+        if text_match:
+            index = int(text_match.group(1))
+            resolved_index = index if index >= 0 else len(combined_text) + index
+
+            if not 0 <= resolved_index < len(combined_text):
+                raise FinQADatasetError(
+                    f"{example_id}: {key} is out of range for "
+                    f"{len(combined_text)} text passages."
+                )
+
+            source_text = combined_text[resolved_index]
+
+            if not isinstance(description, str) or not isinstance(source_text, str):
+                raise FinQADatasetError(
+                    f"{example_id}: {key} and its source must be strings."
+                )
+
+            def normalize(value: str) -> str:
+                return " ".join(value.split())
+
+            if normalize(description) != normalize(source_text):
+                raise FinQADatasetError(
+                    f"{example_id}: {key} description does not match "
+                    "its referenced source passage."
+                )
+
+            gold_text_indices.add(index)
+
+        elif table_match:
+            index = int(table_match.group(1))
+
+            if index >= len(table):
+                raise FinQADatasetError(
+                    f"{example_id}: {key} is out of range for "
+                    f"{len(table)} table rows."
+                )
+
+            if not isinstance(description, str) or not description.strip():
+                raise FinQADatasetError(
+                    f"{example_id}: {key} must have a non-empty description."
+                )
+
+            gold_table_indices.add(index)
+
+        else:
+            raise FinQADatasetError(
+                f"{example_id}: unsupported gold evidence key {key!r}."
+            )
+
+    ann_text = record.get("ann_text_rows")
+    ann_table = record.get("ann_table_rows")
+
+    for field_name, indices in (
+        ("ann_text_rows", ann_text),
+        ("ann_table_rows", ann_table),
+    ):
+        if not isinstance(indices, list) or any(
+            type(index) is not int for index in indices
+        ):
+            raise FinQADatasetError(
+                f"{example_id}: {field_name} must be a list of integers."
+            )
+
+    ann_text_indices = set(ann_text)
+    ann_table_indices = set(ann_table)
+
+    if not ann_text_indices <= gold_text_indices:
+        raise FinQADatasetError(
+            f"{example_id}: ann_text_rows contains indices absent from gold_inds."
+        )
+
+    if not ann_table_indices <= gold_table_indices:
+        raise FinQADatasetError(
+            f"{example_id}: ann_table_rows contains indices absent from gold_inds."
+        )
+
+    return {
+        "gold_text_annotations": len(gold_text_indices),
+        "gold_table_annotations": len(gold_table_indices),
+        "ann_text_annotations": len(ann_text),
+        "ann_table_annotations": len(ann_table),
+    }
+
+
+
 def _sha256_file(path: Path) -> str:
     digest = hashlib.sha256()
 
@@ -80,6 +210,9 @@ def validate_dataset(
             raise FinQADatasetError(
                 f"{split_name} is missing required fields: {sorted(missing)}"
             )
+
+        for record in split:
+            _validate_evidence_annotations(dict(record))
 
         if expected_counts is not None:
             expected = expected_counts[split_name]
@@ -138,8 +271,10 @@ def audit_dataset(
         blank_answers = []
         final_step_mismatches = []
         final_step_unavailable = []
+        evidence_counts = Counter()
 
         for record in records:
+            evidence_counts.update(_validate_evidence_annotations(record))
             example_id = record["id"]
             question = record["question"].strip().casefold()
 
@@ -173,6 +308,7 @@ def audit_dataset(
             "final_step_raw_mismatch_ids": final_step_mismatches,
             "final_step_unavailable_count": len(final_step_unavailable),
             "operation_counts": dict(sorted(operations.items())),
+            "evidence_annotations": dict(sorted(evidence_counts.items())),
         }
 
     for question, locations in question_locations.items():

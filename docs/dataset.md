@@ -61,7 +61,34 @@ All source fields are retained in processed JSONL records.
 - `answer`: human-readable answer.
 - `explanation`: additional annotation.
 - `ann_table_rows` and `ann_text_rows`: annotated evidence locations.
-- `gold_inds`: annotated evidence representation.
+- `gold_inds`: primary mapping of evidence keys to evidence descriptions.
+
+### Evidence Reference Semantics
+
+`gold_inds` is a JSON object whose keys identify source evidence:
+
+- `text_N` refers to index `N` in the concatenation of `pre_text`
+  followed by `post_text`.
+- Negative text indices use Python indexing semantics. For example,
+  `text_-1` refers to the final passage in the combined list.
+- `table_N` refers directly to row index `N` in `table`.
+
+Text evidence descriptions are checked against their referenced source
+passages after whitespace normalization. Table evidence descriptions
+are synthesized annotations and are not expected to equal the raw table
+row representation.
+
+`ann_text_rows` and `ann_table_rows` are annotation index arrays.
+They represent subsets of the corresponding evidence references in
+`gold_inds`; they are not complete replacements for `gold_inds`.
+Duplicate indices in these arrays are preserved because the pipeline
+retains source annotations as supplied. Audit counts distinguish
+unique `gold_inds` references from source annotation entries.
+
+**Evidence leakage policy:** `gold_inds`, `ann_text_rows`, and
+`ann_table_rows` are ground-truth annotations for offline validation
+and evidence-recall evaluation. They must not be included in model
+inputs or used to select evidence at inference time.
 
 These fields are not interchangeable.
 
