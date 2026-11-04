@@ -1,0 +1,11 @@
+model:
+  name: TBD
+  task: text-generation
+  trust_remote_code: false
+
+  loading:
+    dtype: auto
+    quantization: none
+
+  tokenizer:
+    padding_side: right

@@ -1,0 +1,17 @@
+dataset:
+  name: local-jsonl-smoke-test
+  format: jsonl
+  input_path: data/raw
+  output_path: data/processed
+
+  columns:
+    instruction: instruction
+    input: input
+    output: output
+
+  split:
+    train: 0.80
+    validation: 0.10
+    test: 0.10
+
+  seed: 42

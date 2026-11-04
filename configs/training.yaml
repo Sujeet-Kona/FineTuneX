@@ -1,0 +1,17 @@
+training:
+  method: lora
+
+  seed: 42
+  epochs: 2
+  learning_rate: 0.0002
+  batch_size: 1
+  gradient_accumulation_steps: 8
+  max_sequence_length: 512
+
+  lora:
+    rank: 8
+    alpha: 16
+    dropout: 0.05
+    target_modules: []
+
+  output_dir: artifacts/checkpoints
