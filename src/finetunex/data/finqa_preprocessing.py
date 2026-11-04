@@ -124,21 +124,94 @@ def _validate_record(record: dict[str, Any]) -> None:
         raise ValueError("pre_text and post_text must be lists")
 
     passages = record["pre_text"] + record["post_text"]
+    if any(not isinstance(passage, str) for passage in passages):
+        raise ValueError("all passages must be strings")
+
+    table = record["table"]
+    if not isinstance(table, list):
+        raise ValueError("table must be a list")
+
+    if any(
+        not isinstance(row, list) or any(not isinstance(cell, str) for cell in row)
+        for row in table
+    ):
+        raise ValueError("table must contain lists of strings")
+
+    if table:
+        width = len(table[0])
+        if width == 0 or any(len(row) != width for row in table):
+            raise ValueError("table rows must have a consistent non-zero width")
+
+    if not isinstance(record["program"], str) or not record["program"].strip():
+        raise ValueError("program must be a non-empty string")
+
+
+def preprocess_record(
+    record: dict[str, Any],
+    tokenizer: Any,
+    *,
+    split: str,
+    tokenizer_name: str,
+    tokenizer_revision: str,
+    evidence_budget: int = 1024,
+    max_sequence_length: int = 1536,
+) -> dict[str, Any]:
+    """Convert one FinQA record into token IDs and target-only labels.
+
+    The evidence budget counts evidence content only. The final sequence
+    limit applies to the complete prompt, target, and EOS token.
+
+    Gold annotations are deliberately never read or returned.
+    """
+    _validate_record(record)
+
+    if split not in {"train", "validation"}:
+        raise ValueError("split must be 'train' or 'validation'")
+
+    if not isinstance(tokenizer_name, str) or not tokenizer_name.strip():
+        raise ValueError("tokenizer_name must be a non-empty string")
+
+    if not isinstance(tokenizer_revision, str) or not tokenizer_revision.strip():
+        raise ValueError("tokenizer_revision must be a non-empty string")
+
+    for name, value in (
+        ("evidence_budget", evidence_budget),
+        ("max_sequence_length", max_sequence_length),
+    ):
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            raise ValueError(f"{name} must be a positive integer")
+
+    if not callable(getattr(tokenizer, "encode", None)):
+        raise ValueError("tokenizer must provide an encode method")
+
+    eos_token = getattr(tokenizer, "eos_token", None)
+    eos_token_id = getattr(tokenizer, "eos_token_id", None)
+
+    if not isinstance(eos_token, str) or not eos_token:
+        raise ValueError("tokenizer must define a non-empty eos_token")
+
+    if not isinstance(eos_token_id, int):
+        raise ValueError("tokenizer must define an integer eos_token_id")
+
+    @cache
+    def count_tokens(text: str) -> int:
+        return len(tokenizer.encode(text, add_special_tokens=False))
+
+    @cache
+    def count_tokens(text: str) -> int:
+        return len(tokenizer.encode(text, add_special_tokens=False))
+
+    passages = record["pre_text"] + record["post_text"]
     table = record["table"]
     complete_table = "\n".join(" | ".join(row) for row in table)
     complete_table_tokens = count_tokens(complete_table)
 
-    # Treat the configured evidence budget as a ceiling. The fixed system
-    # prompt, question, chat-template tokens, and target also consume context,
-    # so reduce retrieved evidence only as much as needed to fit the complete
-    # supervised sequence. Never truncate the prompt or target.
     configured_evidence_budget = evidence_budget
     effective_evidence_budget = evidence_budget
     evidence_budget_reductions = 0
 
     while True:
         if complete_table_tokens <= effective_evidence_budget:
-            # Preserve the complete table and use the remaining budget for text.
             selection = select_evidence(
                 record["question"],
                 passages,
@@ -146,7 +219,6 @@ def _validate_record(record: dict[str, Any]) -> None:
                 token_budget=effective_evidence_budget - complete_table_tokens,
                 token_counter=count_tokens,
             )
-
             selected_passages = [
                 (item.index, item.content) for item in selection.items
             ]
@@ -154,9 +226,7 @@ def _validate_record(record: dict[str, Any]) -> None:
             table_strategy = "complete"
             selected_table_rows = list(range(1, len(table)))
             evidence_tokens = complete_table_tokens + selection.used_tokens
-
         else:
-            # Oversized-table fallback: select header-grounded data rows.
             selection = select_evidence(
                 record["question"],
                 passages,
@@ -164,7 +234,6 @@ def _validate_record(record: dict[str, Any]) -> None:
                 token_budget=effective_evidence_budget,
                 token_counter=count_tokens,
             )
-
             selected_passages = [
                 (item.index, item.content)
                 for item in selection.items
@@ -173,7 +242,6 @@ def _validate_record(record: dict[str, Any]) -> None:
             selected_table_items = [
                 item for item in selection.items if item.kind == "table"
             ]
-
             table_context = "\n".join(
                 item.content for item in selected_table_items
             )
@@ -196,37 +264,25 @@ def _validate_record(record: dict[str, Any]) -> None:
             tokenizer,
         )
         target = record["program"]
-
-        # The chat template already provides the assistant generation prefix.
-        # Append the target directly so training and inference share one boundary.
-        prompt_prefix_ids = tokenizer.encode(
-            prompt,
-            add_special_tokens=False,
-        )
-        full_text = prompt + target + eos_token
+        prompt_prefix_ids = tokenizer.encode(prompt, add_special_tokens=False)
         input_ids = tokenizer.encode(
-            full_text,
+            prompt + target + eos_token,
             add_special_tokens=False,
         )
-
         prompt_length = len(prompt_prefix_ids)
 
         if input_ids[:prompt_length] != prompt_prefix_ids:
             raise RuntimeError(
                 f"{record['id']}: tokenizer prompt-prefix boundary mismatch"
             )
-
         if not input_ids or input_ids[-1] != eos_token_id:
             raise RuntimeError(f"{record['id']}: EOS token is missing or misplaced")
-
         if prompt_length >= len(input_ids):
             raise RuntimeError(f"{record['id']}: no supervised target tokens")
 
         sequence_length = len(input_ids)
-
         if sequence_length <= max_sequence_length:
             break
-
         if effective_evidence_budget == 0:
             raise ValueError(
                 f"{record['id']}: sequence length {sequence_length} exceeds "
@@ -234,11 +290,9 @@ def _validate_record(record: dict[str, Any]) -> None:
             )
 
         overflow = sequence_length - max_sequence_length
-        next_budget = max(0, effective_evidence_budget - overflow - 8)
-        if next_budget == effective_evidence_budget:
-            next_budget = effective_evidence_budget - 1
-
-        effective_evidence_budget = next_budget
+        effective_evidence_budget = max(
+            0, effective_evidence_budget - overflow - 8
+        )
         evidence_budget_reductions += 1
 
     labels = [-100] * prompt_length + input_ids[prompt_length:]
