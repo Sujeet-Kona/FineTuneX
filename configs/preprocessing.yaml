@@ -1,5 +1,5 @@
 preprocessing:
-  prompt_version: finqa-program-v2-chat
+  prompt_version: finqa-program-v3-reasoning
 
   input:
     directory: data/processed/finqa
