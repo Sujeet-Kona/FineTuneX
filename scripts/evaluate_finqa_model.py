@@ -33,6 +33,7 @@ from finetunex.evaluation.finqa_parser import (  # noqa: E402
 )
 from finetunex.inference.generator import (  # noqa: E402
     generate_program,
+    load_base_inference_components,
     load_inference_components,
 )
 from finetunex.inference.prompt import build_inference_prompt  # noqa: E402
@@ -149,6 +150,11 @@ def parse_args() -> argparse.Namespace:
         help="LoRA checkpoint directory.",
     )
     parser.add_argument(
+        "--base-model",
+        action="store_true",
+        help="Evaluate the unadapted pinned base model instead of a LoRA checkpoint.",
+    )
+    parser.add_argument(
         "--limit",
         type=int,
         default=10,
@@ -223,18 +229,36 @@ def main() -> None:
 
     print("FINETUNEX — FINQA MODEL EVALUATION")
     print("=" * 64)
-    print("Checkpoint:", checkpoint_path)
+    print("Model source:", "base model" if args.base_model else "LoRA adapter")
+    if not args.base_model:
+        print("Checkpoint:", checkpoint_path)
     print("Validation examples:", len(records))
     print("Max new tokens:", args.max_new_tokens)
     print("Evidence budget:", evidence_budget)
     print("Output directory:", output_dir)
     print("Validation SHA-256:", sha256_file(VALIDATION_PATH))
 
-    components = load_inference_components(
-        model_config,
-        training_config,
-        checkpoint_path,
+    if args.base_model:
+        components = load_base_inference_components(model_config, training_config)
+    else:
+        components = load_inference_components(
+            model_config,
+            training_config,
+            checkpoint_path,
+        )
+
+    preprocessing_manifest_path = (
+        PROJECT_ROOT / "artifacts/preprocessed/finqa/manifest.json"
     )
+    preprocessing_manifest_sha256 = sha256_file(preprocessing_manifest_path)
+    if (
+        not args.base_model
+        and components.checkpoint_metadata.get("preprocessing_manifest_sha256")
+        != preprocessing_manifest_sha256
+    ):
+        raise ValueError(
+            "Checkpoint preprocessing manifest does not match current artifacts"
+        )
 
     counters: Counter[str] = Counter()
     operation_counts: Counter[str] = Counter()
@@ -285,6 +309,9 @@ def main() -> None:
 
                 prediction = {
                     "record_id": record["id"],
+                    "prompt_sha256": hashlib.sha256(
+                        prompt_result["prompt"].encode("utf-8")
+                    ).hexdigest(),
                     "split": "validation",
                     "raw_output": generation["raw_output"],
                     "normalized_output": generation["normalized_output"],
@@ -333,17 +360,21 @@ def main() -> None:
                 "answer_reference": "exe_ans",
                 "answer_comparison": "exact_after_five_decimal_rounding",
             },
-            "checkpoint": {
-                "path": str(checkpoint_path),
-                "metadata_sha256": sha256_file(
-                    checkpoint_path / "checkpoint_metadata.json"
+            "model_source": {
+                "type": "base_model" if args.base_model else "lora_adapter",
+                "checkpoint_path": None if args.base_model else str(checkpoint_path),
+                "checkpoint_metadata_sha256": (
+                    None
+                    if args.base_model
+                    else sha256_file(checkpoint_path / "checkpoint_metadata.json")
                 ),
                 "model": components.checkpoint_metadata["model"],
                 "model_revision": components.checkpoint_metadata["model_revision"],
-                "dataset_revision": components.checkpoint_metadata["dataset_revision"],
-                "training_evaluation_scope": components.checkpoint_metadata[
-                    "evaluation_scope"
-                ],
+                "training_evaluation_scope": (
+                    None
+                    if args.base_model
+                    else components.checkpoint_metadata["evaluation_scope"]
+                ),
             },
             "inputs": {
                 "validation_path": str(VALIDATION_PATH),
@@ -351,9 +382,7 @@ def main() -> None:
                 "model_config_sha256": sha256_file(MODEL_CONFIG_PATH),
                 "training_config_sha256": sha256_file(TRAINING_CONFIG_PATH),
                 "preprocessing_config_sha256": sha256_file(PREPROCESSING_CONFIG_PATH),
-                "preprocessing_manifest_sha256": components.checkpoint_metadata[
-                    "preprocessing_manifest_sha256"
-                ],
+                "preprocessing_manifest_sha256": preprocessing_manifest_sha256,
             },
             "metrics": {
                 "total": total,

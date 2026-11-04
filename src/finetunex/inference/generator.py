@@ -296,6 +296,133 @@ def load_inference_components(
     )
 
 
+def load_base_inference_components(
+    model_config: dict[str, Any],
+    training_config: dict[str, Any],
+) -> InferenceComponents:
+    """Load the pinned, unadapted base model for a controlled benchmark."""
+    if not isinstance(model_config, dict) or not isinstance(
+        model_config.get("model"), dict
+    ):
+        raise ValueError("Invalid model configuration")
+    if not isinstance(training_config, dict) or not isinstance(
+        training_config.get("training"), dict
+    ):
+        raise ValueError("Invalid training configuration")
+
+    model_settings = model_config["model"]
+    training_settings = training_config["training"]
+    loading = model_settings.get("loading")
+    tokenizer_settings = model_settings.get("tokenizer")
+
+    if not isinstance(loading, dict):
+        raise ValueError("model.loading must be a mapping")
+    if not isinstance(tokenizer_settings, dict):
+        raise ValueError("model.tokenizer must be a mapping")
+    if model_settings.get("task") != "text-generation":
+        raise ValueError("Only text-generation models are supported")
+    if model_settings.get("trust_remote_code") is not False:
+        raise ValueError("trust_remote_code must be false")
+    if loading.get("local_files_only") is not True:
+        raise ValueError("Model loading must use local cached files only")
+    if loading.get("quantization") != "none":
+        raise ValueError("Quantized model loading is not supported")
+    if loading.get("dtype") not in {"float16", "float32"}:
+        raise ValueError("Inference supports float16 or float32")
+
+    model_name = model_settings.get("name")
+    revision = model_settings.get("revision")
+    if not isinstance(model_name, str) or not model_name:
+        raise ValueError("Model name must be non-empty")
+    if not isinstance(revision, str) or not revision:
+        raise ValueError("Model revision must be pinned")
+    if tokenizer_settings.get("name") != model_name:
+        raise ValueError("Tokenizer and model names must match")
+    if tokenizer_settings.get("revision") != revision:
+        raise ValueError("Tokenizer and model revisions must match")
+    if tokenizer_settings.get("padding_side") != "right":
+        raise ValueError("Only right padding is supported")
+
+    max_sequence_length = training_settings.get("max_sequence_length")
+    if (
+        isinstance(max_sequence_length, bool)
+        or not isinstance(max_sequence_length, int)
+        or max_sequence_length <= 0
+    ):
+        raise ValueError("training.max_sequence_length must be a positive integer")
+
+    dtype_map = {"float16": torch.float16, "float32": torch.float32}
+    device = _select_inference_device()
+    dtype = dtype_map[loading["dtype"]]
+
+    print("Loading pinned tokenizer for base-model benchmark...")
+    tokenizer = AutoTokenizer.from_pretrained(
+        tokenizer_settings["name"],
+        revision=tokenizer_settings["revision"],
+        local_files_only=True,
+        trust_remote_code=False,
+    )
+    tokenizer.padding_side = tokenizer_settings["padding_side"]
+    if tokenizer.pad_token_id is None:
+        if tokenizer.eos_token is None:
+            raise ValueError("Tokenizer has neither a pad token nor EOS token")
+        tokenizer.pad_token = tokenizer.eos_token
+    if tokenizer.eos_token_id is None:
+        raise ValueError("Tokenizer must define an EOS token ID")
+
+    print(f"Loading unadapted base model on {device}...")
+    model = AutoModelForCausalLM.from_pretrained(
+        model_name,
+        revision=revision,
+        dtype=dtype,
+        low_cpu_mem_usage=True,
+        local_files_only=True,
+        trust_remote_code=False,
+    )
+    model.config.use_cache = True
+    if hasattr(model, "gradient_checkpointing_disable"):
+        model.gradient_checkpointing_disable()
+    model.to(device)
+    model.eval()
+    # from_pretrained() leaves parameters trainable by default. Freeze explicitly:
+    # this is an inference-only benchmark, not a training setup.
+    model.requires_grad_(False)
+
+    trainable_parameters = [
+        name for name, parameter in model.named_parameters() if parameter.requires_grad
+    ]
+    if trainable_parameters:
+        raise RuntimeError(
+            "Base model unexpectedly contains trainable parameters: "
+            f"{trainable_parameters[:10]}"
+        )
+    if not model.config.use_cache:
+        raise RuntimeError("KV caching must be enabled for inference")
+
+    metadata = {
+        "model": model_name,
+        "model_revision": revision,
+        "tokenizer": tokenizer_settings["name"],
+        "tokenizer_revision": tokenizer_settings["revision"],
+        "base_dtype": loading["dtype"],
+        "training_config": {"max_sequence_length": max_sequence_length},
+    }
+    print("\n===== BASE MODEL SUMMARY =====")
+    print("Model:", model_name)
+    print("Revision:", revision)
+    print("Device:", device)
+    print("Dtype:", dtype)
+    print("Trainable parameters: 0")
+    print("KV cache: enabled")
+
+    return InferenceComponents(
+        model=model,
+        tokenizer=tokenizer,
+        device=device,
+        checkpoint_metadata=metadata,
+    )
+
+
 def generate_program(
     components: InferenceComponents,
     prompt: str,
