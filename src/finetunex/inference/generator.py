@@ -385,6 +385,9 @@ def load_base_inference_components(
         model.gradient_checkpointing_disable()
     model.to(device)
     model.eval()
+    # from_pretrained() leaves parameters trainable by default. Freeze explicitly:
+    # this is an inference-only benchmark, not a training setup.
+    model.requires_grad_(False)
 
     trainable_parameters = [
         name for name, parameter in model.named_parameters() if parameter.requires_grad
