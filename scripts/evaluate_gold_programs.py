@@ -143,14 +143,8 @@ def main() -> None:
     print(f"  Execution errors:     {len(all_errors)}")
     print(f"  Exact answer matches: {total_matched}")
     print(f"  Answer mismatches:    {len(all_mismatches)}")
-    print(
-        f"  Execution success:    "
-        f"{total_successful / total_examples:.4%}"
-    )
-    print(
-        f"  Execution accuracy:   "
-        f"{total_matched / total_examples:.4%}"
-    )
+    print(f"  Execution success:    {total_successful / total_examples:.4%}")
+    print(f"  Execution accuracy:   {total_matched / total_examples:.4%}")
 
     print("\nOPERATION COUNTS")
     for operation, count in total_operations.most_common():
@@ -177,9 +171,7 @@ def main() -> None:
         "execution_success_rate": (
             total_successful / total_examples if total_examples else 0
         ),
-        "execution_accuracy": (
-            total_matched / total_examples if total_examples else 0
-        ),
+        "execution_accuracy": (total_matched / total_examples if total_examples else 0),
         "splits": [
             {
                 "split": result["split"],
@@ -197,9 +189,7 @@ def main() -> None:
 
     report_path = Path("experiments/finqa_gold_execution_report.json")
     report_path.parent.mkdir(parents=True, exist_ok=True)
-    report_path.write_text(
-        json.dumps(report, indent=2, ensure_ascii=False) + "\n"
-    )
+    report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False) + "\n")
 
     print(f"\nDetailed report: {report_path}")
 
