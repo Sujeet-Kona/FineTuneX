@@ -458,10 +458,10 @@ def main() -> None:
                 "limited_run": total < 883,
                 "sample_method": (
                     "sha256_record_id"
-                    if args.limit is not None
+                    if total < 883
                     else "complete_official_order"
                 ),
-                "sample_seed": args.sample_seed if args.limit is not None else None,
+                "sample_seed": args.sample_seed if total < 883 else None,
                 "max_new_tokens": args.max_new_tokens,
                 "evidence_budget": evidence_budget,
                 "max_prompt_tokens": max_prompt_tokens,
