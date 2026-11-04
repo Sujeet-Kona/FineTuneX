@@ -101,9 +101,7 @@ def test_split_has_no_overlap():
     splits = split_dataset(records, 0.8, 0.1, 0.1, 42)
 
     all_instructions = [
-        example["instruction"]
-        for examples in splits.values()
-        for example in examples
+        example["instruction"] for examples in splits.values() for example in examples
     ]
 
     assert len(all_instructions) == len(set(all_instructions))
