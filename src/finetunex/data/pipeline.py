@@ -152,8 +152,8 @@ def split_dataset(
 
     return {
         "train": shuffled[:train_count],
-        "validation": shuffled[train_count:train_count + validation_count],
-        "test": shuffled[train_count + validation_count:],
+        "validation": shuffled[train_count : train_count + validation_count],
+        "test": shuffled[train_count + validation_count :],
     }
 
 
@@ -193,8 +193,7 @@ def prepare_dataset(
 
     for split_name, examples in splits.items():
         formatted = [
-            {**example, "text": format_example(example)}
-            for example in examples
+            {**example, "text": format_example(example)} for example in examples
         ]
         _write_jsonl(output_dir / f"{split_name}.jsonl", formatted)
 
@@ -210,10 +209,7 @@ def prepare_dataset(
             "validation": validation_ratio,
             "test": test_ratio,
         },
-        "split_counts": {
-            name: len(examples)
-            for name, examples in splits.items()
-        },
+        "split_counts": {name: len(examples) for name, examples in splits.items()},
     }
 
     with (output_dir / "manifest.json").open("w", encoding="utf-8") as file:
