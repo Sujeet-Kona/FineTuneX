@@ -127,6 +127,24 @@ def test_complete_table_is_preserved_when_it_fits():
     assert metadata["selected_table_row_indices"] == [1, 2]
 
 
+def test_reduces_evidence_budget_to_fit_sequence_without_truncation():
+    record = make_record()
+    record["pre_text"] = ["Revenue " + "growth " * 600]
+
+    result = preprocess(
+        record,
+        evidence_budget=1024,
+        max_sequence_length=2600,
+    )
+
+    metadata = result["metadata"]
+
+    assert metadata["effective_evidence_budget"] < metadata["evidence_budget"]
+    assert metadata["evidence_budget_reductions"] > 0
+    assert metadata["evidence_tokens"] <= metadata["effective_evidence_budget"]
+    assert metadata["sequence_length"] <= 2600
+
+
 def test_oversized_table_uses_header_grounded_row_fallback():
     record = make_record()
     record["table"] = [
