@@ -108,6 +108,41 @@ the tokenized train/validation artifacts, train a new adapter, and evaluate
 that adapter against a base-model run produced with the same prompt version.
 Do not reuse the v2 pilot checkpoint as a v3 result.
 
+## FastAPI inference
+
+The API loads one verified LoRA checkpoint at startup and serializes generation
+requests so concurrent clients do not issue simultaneous inference calls to
+the same local accelerator. Set the checkpoint path and start the server:
+
+```bash
+export FINETUNEX_CHECKPOINT=artifacts/checkpoints/<v3-checkpoint-name>
+uvicorn finetunex.api.app:app --host 127.0.0.1 --port 8000
+```
+
+The model and tokenizer must already exist in the local Hugging Face cache.
+The API does not download model weights at startup. It exposes:
+
+- `GET /health/live` — process liveness.
+- `GET /health/ready` — model readiness.
+- `POST /v1/finqa/score` — generate a FinQA program and execute it against the supplied table.
+
+Example request:
+
+```bash
+curl -X POST http://127.0.0.1:8000/v1/finqa/score \\
+  -H 'Content-Type: application/json' \\
+  -d '{
+    "id": "example-1",
+    "question": "What is revenue in 2023 divided by revenue in 2022?",
+    "table": [["Year", "Revenue"], ["2022", "100"], ["2023", "125"]]
+  }'
+```
+
+The request schema rejects gold answer/program fields. A syntactically invalid
+model output is reported as a parse failure; it is not silently converted into
+an answer. The returned numerical value is the deterministic executor result,
+not a free-form model-generated answer.
+
 ## Engineering Principles
 
 - Preserve official benchmark splits.
@@ -126,7 +161,7 @@ Do not reuse the v2 pilot checkpoint as a v3 result.
 - [x] Gold-program execution audit across all 8,281 examples.
 - [x] Model feasibility and base-model evaluation path.
 - [x] Versioned explicit FinQA reasoning prompt contract.
+- [x] FastAPI inference endpoint implementation (local validation pending).
 - [ ] Re-preprocess data and train/evaluate a v3 adapter.
 - [ ] Full-data LoRA training and comparative evaluation.
-- [ ] Artifact packaging and inference API.
 - [ ] Docker and automated CI validation.
