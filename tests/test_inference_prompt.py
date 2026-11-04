@@ -142,7 +142,7 @@ def test_oversized_table_uses_same_fallback_as_training():
         split="validation",
         tokenizer_name="Qwen/Qwen3-0.6B",
         tokenizer_revision="c1899de289a04d12100db370d81485cdf75e47ca",
-        evidence_budget=75,
+        evidence_budget=10,
         max_sequence_length=4096,
     )
 
