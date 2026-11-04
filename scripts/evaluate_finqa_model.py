@@ -169,8 +169,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--max-new-tokens",
         type=int,
-        default=96,
-        help="Maximum generated tokens per example.",
+        default=128,
+        help="Maximum generated tokens per example (configured reserve: 128).",
     )
     parser.add_argument(
         "--evidence-budget",
@@ -224,6 +224,19 @@ def main() -> None:
 
     model_config = load_yaml_config(MODEL_CONFIG_PATH)
     training_config = load_yaml_config(TRAINING_CONFIG_PATH)
+    preprocessing_config = load_yaml_config(PREPROCESSING_CONFIG_PATH)["preprocessing"]
+    max_prompt_tokens = preprocessing_config["sequence"]["max_prompt_length"]
+    configured_max_new_tokens = preprocessing_config["generation"]["max_new_tokens"]
+
+    if args.max_new_tokens > configured_max_new_tokens:
+        raise ValueError(
+            f"--max-new-tokens cannot exceed configured generation reserve "
+            f"({configured_max_new_tokens})"
+        )
+
+    max_sequence_length = training_config["training"]["max_sequence_length"]
+    if max_prompt_tokens + args.max_new_tokens > max_sequence_length:
+        raise ValueError("Prompt budget and generation limit exceed sequence limit")
 
     evidence_budget = args.evidence_budget
 
@@ -235,6 +248,7 @@ def main() -> None:
     print("Validation examples:", len(records))
     print("Max new tokens:", args.max_new_tokens)
     print("Evidence budget:", evidence_budget)
+    print("Maximum prompt tokens:", max_prompt_tokens)
     print("Output directory:", output_dir)
     print("Validation SHA-256:", sha256_file(VALIDATION_PATH))
 
@@ -275,6 +289,7 @@ def main() -> None:
                     safe_record,
                     components.tokenizer,
                     evidence_budget=evidence_budget,
+                    max_prompt_tokens=max_prompt_tokens,
                 )
 
                 generation = generate_program(
@@ -356,6 +371,7 @@ def main() -> None:
                 "limited_run": total < 883,
                 "max_new_tokens": args.max_new_tokens,
                 "evidence_budget": evidence_budget,
+                "max_prompt_tokens": max_prompt_tokens,
                 "generation": "greedy",
                 "answer_reference": "exe_ans",
                 "answer_comparison": "exact_after_five_decimal_rounding",

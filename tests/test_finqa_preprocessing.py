@@ -40,9 +40,9 @@ class FakeTokenizer:
 
         if text.endswith(self.eos_token):
             content = text[: -len(self.eos_token)]
-            return [ord(char) for char in content] + [self.eos_token_id]
+            return list(range(len(content[::5]))) + [self.eos_token_id]
 
-        return [ord(char) for char in text]
+        return list(range(len(text[::5])))
 
 
 def make_record():
@@ -81,7 +81,7 @@ def preprocess(record=None, **kwargs):
 
 
 def test_prompt_contract_defines_operations_and_reasoning_constraints():
-    assert PROMPT_VERSION == "finqa-program-v3-reasoning"
+    assert PROMPT_VERSION == "finqa-program-v4-fixed-prompt-budget"
     assert "subtract(a, b) computes a minus b" in SYSTEM_INSTRUCTION
     assert "divide(a, b) computes a divided by b" in SYSTEM_INSTRUCTION
     assert "zero-based" in SYSTEM_INSTRUCTION
@@ -167,12 +167,12 @@ def test_oversized_table_uses_header_grounded_row_fallback():
         ["2023", "125 revenue"],
     ]
 
-    result = preprocess(record, evidence_budget=75)
+    result = preprocess(record, evidence_budget=10)
 
     metadata = result["metadata"]
 
     assert metadata["table_strategy"] == "selected_rows"
-    assert metadata["evidence_tokens"] <= 75
+    assert metadata["evidence_tokens"] <= 10
     assert all(index > 0 for index in metadata["selected_table_row_indices"])
 
 
@@ -207,10 +207,10 @@ def test_does_not_mutate_source_record():
 
 def test_rejects_sequence_over_maximum_without_truncation():
     record = make_record()
-    record["program"] = "x" * 200
+    record["program"] = "x" * 1000
 
-    with pytest.raises(ValueError, match="exceeds maximum"):
-        preprocess(record, max_sequence_length=100)
+    with pytest.raises(ValueError, match="generation reserve"):
+        preprocess(record, max_sequence_length=1536, max_prompt_tokens=1408)
 
 
 def test_rejects_unsupported_split():

@@ -27,7 +27,7 @@ class FakeTokenizer:
 
     def encode(self, text, add_special_tokens=False):
         assert add_special_tokens is False
-        return [ord(character) for character in text]
+        return list(range(len(text[::5])))
 
 
 @pytest.fixture
@@ -82,6 +82,8 @@ def test_score_returns_program_and_executed_value(monkeypatch, components):
     assert result["predicted_value"] == 1.25
     assert result["operations"] == ["divide"]
     assert result["model"] == "Qwen/Qwen3-0.6B"
+    assert result["prompt_metadata"]["max_prompt_tokens"] == 1408
+    assert result["prompt_metadata"]["prompt_tokens"] <= 1408
 
 
 def test_score_reports_parse_failure_without_execution(monkeypatch, components):

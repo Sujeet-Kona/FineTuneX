@@ -74,6 +74,10 @@ def validate_configs(
     sequence_config = _require_mapping(
         preprocessing.get("sequence"), "preprocessing.sequence"
     )
+    generation_config = _require_mapping(
+        preprocessing.get("generation"),
+        "preprocessing.generation",
+    )
 
     repository = _require_string(source.get("repository"), "dataset.source.repository")
     dataset_revision = _require_string(
@@ -159,6 +163,22 @@ def validate_configs(
         "preprocessing.sequence.max_length",
     )
 
+    max_prompt_tokens = _require_positive_int(
+        sequence_config.get("max_prompt_length"),
+        "preprocessing.sequence.max_prompt_length",
+    )
+    max_new_tokens = _require_positive_int(
+        generation_config.get("max_new_tokens"),
+        "preprocessing.generation.max_new_tokens",
+    )
+
+    if max_prompt_tokens >= max_sequence_length:
+        raise ValueError("max_prompt_length must be smaller than max_sequence_length")
+    if max_prompt_tokens + max_new_tokens != max_sequence_length:
+        raise ValueError(
+            "Prompt budget and generation reserve must equal the sequence limit"
+        )
+
     training_max_length = _require_positive_int(
         training.get("max_sequence_length"),
         "training.max_sequence_length",
@@ -202,6 +222,8 @@ def validate_configs(
         "padding_side": padding_side,
         "evidence_budget": evidence_budget,
         "max_sequence_length": max_sequence_length,
+        "max_prompt_tokens": max_prompt_tokens,
+        "max_new_tokens": max_new_tokens,
         "input_dir": input_directory,
         "output_dir": output_directory,
     }
@@ -270,6 +292,8 @@ def main() -> None:
     print(f"Output: {settings['output_dir']}")
     print(f"Evidence budget: {settings['evidence_budget']}")
     print(f"Maximum sequence length: {settings['max_sequence_length']}")
+    print(f"Maximum prompt length: {settings['max_prompt_tokens']}")
+    print(f"Generation reserve: {settings['max_new_tokens']}")
 
     if not settings["input_dir"].is_dir():
         raise FileNotFoundError(
@@ -311,6 +335,7 @@ def main() -> None:
         model_revision=settings["model_revision"],
         evidence_budget=settings["evidence_budget"],
         max_sequence_length=settings["max_sequence_length"],
+        max_prompt_tokens=settings["max_prompt_tokens"],
         config_hashes=config_hashes,
         overwrite=args.overwrite,
     )

@@ -177,7 +177,7 @@ def validate_manifest(
         if isinstance(count, bool) or not isinstance(count, int) or count <= 0:
             raise ValueError(f"dataset.expected.{split_name}_examples must be positive")
 
-    if manifest.get("schema_version") != 1:
+    if manifest.get("schema_version") != 2:
         raise ValueError("Unsupported preprocessing manifest schema")
 
     validate_dataset_provenance(manifest.get("dataset"), dataset)
@@ -206,6 +206,16 @@ def validate_manifest(
         != training["max_sequence_length"]
     ):
         raise ValueError("Training and preprocessing sequence limits differ")
+
+    if preprocessing_metadata.get("max_prompt_tokens") != preprocessing.get(
+        "sequence", {}
+    ).get("max_prompt_length"):
+        raise ValueError("Training and preprocessing prompt budgets differ")
+
+    if preprocessing_metadata.get("generation_reserve_tokens") != preprocessing.get(
+        "generation", {}
+    ).get("max_new_tokens"):
+        raise ValueError("Training and preprocessing generation reserves differ")
 
     if preprocessing_metadata.get("prompt_version") != preprocessing.get(
         "prompt_version"

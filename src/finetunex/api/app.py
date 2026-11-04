@@ -30,8 +30,7 @@ from finetunex.inference.prompt import build_inference_prompt
 PROJECT_ROOT = Path(__file__).resolve().parents[3]
 MODEL_CONFIG_PATH = PROJECT_ROOT / "configs/model.yaml"
 TRAINING_CONFIG_PATH = PROJECT_ROOT / "configs/training.yaml"
-DEFAULT_EVIDENCE_BUDGET = 1024
-DEFAULT_MAX_NEW_TOKENS = 128
+PREPROCESSING_CONFIG_PATH = PROJECT_ROOT / "configs/preprocessing.yaml"
 
 
 class FinQARequest(BaseModel):
@@ -80,11 +79,28 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(application: FastAPI):
+        preprocessing = load_yaml_config(PREPROCESSING_CONFIG_PATH)["preprocessing"]
+        application.state.evidence_budget = preprocessing["evidence"]["token_budget"]
+        application.state.max_prompt_tokens = preprocessing["sequence"][
+            "max_prompt_length"
+        ]
+        application.state.max_new_tokens = preprocessing["generation"]["max_new_tokens"]
+        max_sequence_length = load_yaml_config(TRAINING_CONFIG_PATH)["training"][
+            "max_sequence_length"
+        ]
+        if (
+            application.state.max_prompt_tokens + application.state.max_new_tokens
+            > max_sequence_length
+        ):
+            raise RuntimeError(
+                "Prompt budget and generation reserve exceed sequence limit"
+            )
+
         if components is None:
             checkpoint = os.environ.get("FINETUNEX_CHECKPOINT")
             if not checkpoint:
                 raise RuntimeError(
-                    "FINETUNEX_CHECKPOINT must point to a v3 LoRA checkpoint"
+                    "FINETUNEX_CHECKPOINT must point to a v4 LoRA checkpoint"
                 )
 
             model_config = load_yaml_config(MODEL_CONFIG_PATH)
@@ -130,7 +146,8 @@ def create_app(
             prompt_result = build_inference_prompt(
                 record,
                 inference_components.tokenizer,
-                evidence_budget=DEFAULT_EVIDENCE_BUDGET,
+                evidence_budget=application.state.evidence_budget,
+                max_prompt_tokens=application.state.max_prompt_tokens,
             )
         except (TypeError, ValueError, RuntimeError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -140,7 +157,7 @@ def create_app(
                 generation = generate_program(
                     inference_components,
                     prompt_result["prompt"],
-                    max_new_tokens=DEFAULT_MAX_NEW_TOKENS,
+                    max_new_tokens=application.state.max_new_tokens,
                 )
         except (TypeError, ValueError) as exc:
             raise HTTPException(status_code=422, detail=str(exc)) from exc
