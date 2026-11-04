@@ -9,6 +9,7 @@ from finetunex.evaluation.finqa_executor import (
 )
 from finetunex.evaluation.finqa_reference import reference_execute_program
 
+
 def test_parse_integer_and_decimal():
     assert parse_number("1,234.56") == 1234.56
 
