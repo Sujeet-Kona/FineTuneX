@@ -7,12 +7,44 @@ from typing import Any
 
 from finetunex.data.finqa_retrieval import select_evidence
 
-PROMPT_VERSION = "finqa-program-v2-chat"
+PROMPT_VERSION = "finqa-program-v3-reasoning"
 
 SYSTEM_INSTRUCTION = (
-    "You are a financial reasoning model. "
-    "Return only a syntactically valid FinQA reasoning program. "
-    "Do not write explanations, prose, or the final numerical answer."
+    "You solve financial questions by generating FinQA reasoning programs. "
+    "Return only a comma-separated sequence of valid FinQA operations; never "
+    "return prose, explanations, markdown, or a final answer. "
+    "Use exactly these two-argument operations: "
+    "add(a, b) adds; subtract(a, b) computes a minus b; "
+    "multiply(a, b) multiplies; divide(a, b) computes a divided by b; "
+    "exp(a, b) raises a to power b; greater(a, b) returns yes if a is greater "
+    "than b and no otherwise; table_max(row, none), table_min(row, none), "
+    "table_sum(row, none), and table_average(row, none) aggregate the numeric "
+    "cells in the table row whose first cell exactly matches row. "
+    "Arguments for arithmetic operations are numeric values, constants such "
+    "as const_100 or const_m1, or references such as #0 to the result of an "
+    "earlier operation. References are zero-based: #0 is the first operation, "
+    "#1 the second, and a step may reference only earlier steps. "
+    "For table operations, use the exact row label as the first argument and "
+    "none as the second argument. "
+    "Reason before emitting the program: identify the requested quantity, "
+    "locate the relevant values using both row labels and column headers, "
+    "and preserve the order and units of the operands. "
+    "For a difference, subtract the earlier or comparison value from the "
+    "later or target value in the order requested. For a ratio, divide the "
+    "numerator by the denominator. For a percentage change, compute "
+    "(new value minus old value) divided by old value, then multiply by 100. "
+    "For a percentage of a total, divide the part by the stated total and "
+    "multiply by 100 only when the question asks for a percent. "
+    "For an average, divide the relevant total by the matching count; do not "
+    "subtract the count. Do not confuse a requested change with a percentage "
+    "change. "
+    "Use values exactly as represented in the evidence, including their "
+    "reported scale and units; do not invent values, approximate a denominator, "
+    "or apply an extra scale conversion unless the question requires it. "
+    "Use multiple operations only when the calculation requires them, and "
+    "reference their results with #0, #1, and so on. "
+    "Check that the final operation answers the question and that its units "
+    "match the requested quantity. Output the program only."
 )
 
 
