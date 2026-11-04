@@ -68,9 +68,7 @@ def parse_program(program: str) -> tuple[ProgramStep, ...]:
 
         operation = match.group(1)
         if operation not in SUPPORTED_OPERATIONS:
-            raise FinQAProgramParseError(
-                f"Unsupported operation: {operation!r}."
-            )
+            raise FinQAProgramParseError(f"Unsupported operation: {operation!r}.")
 
         arguments_start = match.end()
         separator = source.find(",", arguments_start)
@@ -123,9 +121,7 @@ def parse_program(program: str) -> tuple[ProgramStep, ...]:
         position += 1
 
         if position == len(source):
-            raise FinQAProgramParseError(
-                "Program cannot end with a step separator."
-            )
+            raise FinQAProgramParseError("Program cannot end with a step separator.")
 
     if not steps:
         raise FinQAProgramParseError("Program must contain at least one step.")
