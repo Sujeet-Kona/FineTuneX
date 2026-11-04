@@ -1,0 +1,23 @@
+preprocessing:
+  prompt_version: finqa-program-v2-chat
+
+  input:
+    directory: data/processed/finqa
+
+  output:
+    directory: artifacts/preprocessed/finqa
+
+  evidence:
+    strategy: complete-table-first
+    token_budget: 1024
+
+  sequence:
+    max_length: 1536
+
+  splits:
+    - train
+    - validation
+
+  expected_counts:
+    train: 6251
+    validation: 883
