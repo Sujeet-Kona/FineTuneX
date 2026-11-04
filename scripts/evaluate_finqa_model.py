@@ -247,6 +247,19 @@ def main() -> None:
             checkpoint_path,
         )
 
+    preprocessing_manifest_path = (
+        PROJECT_ROOT / "artifacts/preprocessed/finqa/manifest.json"
+    )
+    preprocessing_manifest_sha256 = sha256_file(preprocessing_manifest_path)
+    if (
+        not args.base_model
+        and components.checkpoint_metadata.get("preprocessing_manifest_sha256")
+        != preprocessing_manifest_sha256
+    ):
+        raise ValueError(
+            "Checkpoint preprocessing manifest does not match current artifacts"
+        )
+
     counters: Counter[str] = Counter()
     operation_counts: Counter[str] = Counter()
 
@@ -369,9 +382,7 @@ def main() -> None:
                 "model_config_sha256": sha256_file(MODEL_CONFIG_PATH),
                 "training_config_sha256": sha256_file(TRAINING_CONFIG_PATH),
                 "preprocessing_config_sha256": sha256_file(PREPROCESSING_CONFIG_PATH),
-                "preprocessing_manifest_sha256": sha256_file(
-                    PROJECT_ROOT / "artifacts/preprocessed/finqa/manifest.json"
-                ),
+                "preprocessing_manifest_sha256": preprocessing_manifest_sha256,
             },
             "metrics": {
                 "total": total,
