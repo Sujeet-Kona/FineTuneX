@@ -6,8 +6,8 @@ to the retriever, prompt builder, training target, or inference path.
 
 from __future__ import annotations
 
-from collections import defaultdict
 import re
+from collections import defaultdict
 from typing import Any
 
 
