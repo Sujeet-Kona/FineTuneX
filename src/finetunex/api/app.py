@@ -70,7 +70,9 @@ class FinQARequest(BaseModel):
             for row in table
             for cell in row
         ):
-            raise ValueError("Table cells must be non-empty and at most 1000 characters")
+            raise ValueError(
+                "Table cells must be non-empty and at most 1000 characters"
+            )
 
         return table
 
