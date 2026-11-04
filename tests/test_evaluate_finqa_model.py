@@ -206,3 +206,24 @@ def test_validation_sampling_is_reproducible_and_id_based(tmp_path, monkeypatch)
     assert [row["id"] for row in first] == [row["id"] for row in second]
     assert len({row["id"] for row in first}) == 4
     assert [row["id"] for row in first] != [row["id"] for row in other_seed]
+
+
+
+def test_validation_loader_rejects_duplicate_record_ids(tmp_path, monkeypatch):
+    path = tmp_path / "validation.jsonl"
+    record = {
+        "id": "duplicate",
+        "question": "Question?",
+        "pre_text": [],
+        "post_text": [],
+        "table": [],
+        "exe_ans": "1",
+    }
+    path.write_text(
+        json.dumps(record) + "\\n" + json.dumps(record) + "\\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(evaluator, "VALIDATION_PATH", path)
+
+    with pytest.raises(ValueError, match="Duplicate validation record ID"):
+        load_validation_records()
