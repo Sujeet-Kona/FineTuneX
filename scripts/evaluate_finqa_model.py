@@ -99,6 +99,7 @@ def inference_only_record(record: dict[str, Any]) -> dict[str, Any]:
         key: record[key] for key in ("id", "question", "pre_text", "post_text", "table")
     }
 
+
 def validate_preprocessing_provenance() -> tuple[str, str, str]:
     """Verify raw evaluation data is the exact source of the tokenized artifacts."""
     manifest_path = PROJECT_ROOT / "artifacts/preprocessed/finqa/manifest.json"
