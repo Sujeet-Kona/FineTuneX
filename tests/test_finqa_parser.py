@@ -10,15 +10,11 @@ from finetunex.evaluation.finqa_parser import (
 
 
 def test_parse_single_arithmetic_step():
-    assert parse_program("add(75.0, 72.7)") == (
-        ProgramStep("add", "75.0", "72.7"),
-    )
+    assert parse_program("add(75.0, 72.7)") == (ProgramStep("add", "75.0", "72.7"),)
 
 
 def test_parse_multiple_steps_and_references():
-    assert parse_program(
-        "subtract(125, 100), divide(#0, 100)"
-    ) == (
+    assert parse_program("subtract(125, 100), divide(#0, 100)") == (
         ProgramStep("subtract", "125", "100"),
         ProgramStep("divide", "#0", "100"),
     )
@@ -52,9 +48,7 @@ def test_parse_table_operations(operation, row):
 
 
 def test_parse_whitespace():
-    assert parse_program(
-        "  add(10, 20) ,  multiply(#0, 3)  "
-    ) == (
+    assert parse_program("  add(10, 20) ,  multiply(#0, 3)  ") == (
         ProgramStep("add", "10", "20"),
         ProgramStep("multiply", "#0", "3"),
     )
