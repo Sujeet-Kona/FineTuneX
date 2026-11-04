@@ -61,7 +61,7 @@ python scripts/evaluate_finqa_model.py \\
   --limit 32 \\
   --max-new-tokens 128 \\
   --evidence-budget 1024 \\
-  --output-dir artifacts/evaluation/base-chat-32
+  --output-dir artifacts/evaluation/v3-base-32
 ```
 
 Run the adapter with the same evaluation settings:
@@ -72,15 +72,15 @@ python scripts/evaluate_finqa_model.py \\
   --limit 32 \\
   --max-new-tokens 128 \\
   --evidence-budget 1024 \\
-  --output-dir artifacts/evaluation/adapter-chat-32
+  --output-dir artifacts/evaluation/v3-adapter-32
 ```
 
 After both runs finish, verify the paired comparison:
 
 ```bash
 python scripts/compare_finqa_evaluations.py \\
-  --base-dir artifacts/evaluation/base-chat-32 \\
-  --adapter-dir artifacts/evaluation/adapter-chat-32 \\
+  --base-dir artifacts/evaluation/v3-base-32 \\
+  --adapter-dir artifacts/evaluation/v3-adapter-32 \\
   --output artifacts/evaluation/paired-comparison.json
 ```
 
@@ -174,14 +174,31 @@ are not already present in the mounted cache. The service listens on port
 
 ## Project Status
 
-- [x] Repository foundation.
-- [x] FinQA source inspection and initial data audit.
-- [x] Dedicated FinQA dataset preparation and validation pipeline.
+- [x] Repository foundation and pinned FinQA/model revisions.
+- [x] FinQA preprocessing pipeline with train/validation provenance and test-split isolation.
 - [x] FinQA program parser and deterministic executor.
 - [x] Gold-program execution audit across all 8,281 examples.
-- [x] Model feasibility and base-model evaluation path.
-- [x] Versioned explicit FinQA reasoning prompt contract.
-- [x] FastAPI inference endpoint implementation (local validation pending).
-- [ ] Re-preprocess data and train/evaluate a v3 adapter.
-- [ ] Full-data LoRA training and comparative evaluation.
-- [x] CUDA Docker image and GPU Compose deployment definition (runtime validation pending).\n- [ ] Automated CI validation.
+- [x] Versioned v3 reasoning prompt and shared inference prompt implementation.
+- [x] Controlled v3 base-model smoke evaluation on 32 validation examples.
+- [ ] Train a v3 LoRA adapter and run the same 32-example paired evaluation.
+- [ ] Run a full 883-example validation comparison before making model-quality claims.
+- [x] FastAPI inference implementation (real checkpoint-backed smoke test pending).
+- [x] CUDA Docker deployment definition (Linux NVIDIA build/runtime validation pending).
+- [ ] Confirm GitHub Actions CI on the final pull-request chain.
+
+### Current benchmark snapshot
+
+The unadapted Qwen3-0.6B model was evaluated on the first 32 validation
+examples with the v3 prompt, greedy decoding, a 128-token generation limit,
+and a 1,024-token evidence budget:
+
+| Metric | Base model |
+| --- | ---: |
+| Parse success | 18/32 (56.25%) |
+| Execution success | 10/32 (31.25%) |
+| Exact answer accuracy | 0/32 (0%) |
+
+This is a small smoke benchmark, not a full validation result. It establishes
+the baseline for a paired adapter run; it does not establish that fine-tuning
+will improve accuracy. No fine-tuned model-quality claim is made until the
+adapter is evaluated on identical prompts and record order.
