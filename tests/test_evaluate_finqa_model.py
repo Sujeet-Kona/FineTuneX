@@ -1,9 +1,14 @@
+import hashlib
+import json
 import sys
 from pathlib import Path
+
+import pytest
 
 SCRIPTS_DIR = Path(__file__).resolve().parents[1] / "scripts"
 sys.path.insert(0, str(SCRIPTS_DIR))
 
+import evaluate_finqa_model as evaluator  # noqa: E402
 from evaluate_finqa_model import (  # noqa: E402
     evaluate_prediction,
     inference_only_record,
@@ -92,9 +97,7 @@ def test_execution_error_is_not_a_parse_error():
 def test_table_program_executes_against_source_table():
     result = evaluate_prediction(
         "table_sum(Revenue, none)",
-        [
-            ["Revenue", "100", "200"],
-        ],
+        [["Revenue", "100", "200"]],
         "300",
     )
 
@@ -102,14 +105,10 @@ def test_table_program_executes_against_source_table():
     assert result["predicted_answer"] == 300
     assert result["answer_match"] is True
 
+
 def test_validation_provenance_accepts_matching_source_and_artifact(
     tmp_path, monkeypatch
 ):
-    import hashlib
-    import json
-
-    import evaluate_finqa_model as evaluator
-
     processed_dir = tmp_path / "artifacts" / "preprocessed" / "finqa"
     processed_dir.mkdir(parents=True)
     source_path = tmp_path / "data" / "processed" / "finqa" / "validation.jsonl"
@@ -141,10 +140,6 @@ def test_validation_provenance_accepts_matching_source_and_artifact(
 
 
 def test_validation_provenance_rejects_wrong_source_hash(tmp_path, monkeypatch):
-    import json
-
-    import evaluate_finqa_model as evaluator
-
     processed_dir = tmp_path / "artifacts" / "preprocessed" / "finqa"
     processed_dir.mkdir(parents=True)
     source_path = tmp_path / "data" / "processed" / "finqa" / "validation.jsonl"
@@ -154,18 +149,18 @@ def test_validation_provenance_rejects_wrong_source_hash(tmp_path, monkeypatch):
         '{"input_ids":[1,2]}\\n', encoding="utf-8"
     )
     (processed_dir / "manifest.json").write_text(
-        json.dumps({
-            "schema_version": 2,
-            "dataset": {"source_split_sha256": {"validation": "wrong"}},
-            "splits": {"validation": {"output_sha256": "wrong"}},
-        }),
+        json.dumps(
+            {
+                "schema_version": 2,
+                "dataset": {"source_split_sha256": {"validation": "wrong"}},
+                "splits": {"validation": {"output_sha256": "wrong"}},
+            }
+        ),
         encoding="utf-8",
     )
 
     monkeypatch.setattr(evaluator, "PROJECT_ROOT", tmp_path)
     monkeypatch.setattr(evaluator, "VALIDATION_PATH", source_path)
-
-    import pytest
 
     with pytest.raises(ValueError, match="Raw validation split"):
         validate_preprocessing_provenance()
