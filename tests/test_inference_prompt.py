@@ -101,6 +101,7 @@ def test_matches_training_evidence_selection_metadata():
         split="validation",
         tokenizer_name="Qwen/Qwen3-0.6B",
         tokenizer_revision="c1899de289a04d12100db370d81485cdf75e47ca",
+        max_sequence_length=4096,
     )
 
     inference_metadata = inference["metadata"]
@@ -142,6 +143,7 @@ def test_oversized_table_uses_same_fallback_as_training():
         tokenizer_name="Qwen/Qwen3-0.6B",
         tokenizer_revision="c1899de289a04d12100db370d81485cdf75e47ca",
         evidence_budget=75,
+        max_sequence_length=4096,
     )
 
     assert inference["metadata"]["table_strategy"] == "selected_rows"
