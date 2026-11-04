@@ -141,3 +141,13 @@ def test_rejects_non_finite_number():
 def test_rejects_non_sequence_table():
     with pytest.raises(FinQAExecutionError):
         execute_program("add(1, 2)", "not-a-table")
+
+def test_rejects_complex_exponentiation_result():
+    with pytest.raises(FinQAExecutionError, match="complex result"):
+        execute_program("exp(-1, 0.5)", [])
+
+
+def test_rejects_exponentiation_overflow():
+    with pytest.raises(FinQAExecutionError):
+        execute_program("exp(10, 10000)", [])
+\n

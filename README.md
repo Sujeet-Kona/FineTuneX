@@ -36,8 +36,9 @@ context, tables, numerical questions and annotated reasoning programs.
 
 - [x] Repository foundation.
 - [x] FinQA source inspection and initial data audit.
-- [ ] Dedicated FinQA preprocessing pipeline.
-- [ ] Official program executor.
-- [ ] Model feasibility and baseline.
-- [ ] LoRA fine-tuning.
-- [ ] Evaluation and inference.
+- [x] Dedicated FinQA dataset preparation and validation pipeline.
+- [x] FinQA program parser and deterministic executor.
+- [x] Gold-program execution audit across all 8,281 examples.
+- [ ] Model feasibility and base-model baseline.
+- [ ] LoRA fine-tuning and comparative evaluation.
+- [ ] Artifact packaging and inference API.

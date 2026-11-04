@@ -173,11 +173,18 @@ def _execute_step(
         return left / right
     if operation == "exp":
         try:
-            return left**right
-        except (OverflowError, ValueError) as exc:
+            result = left**right
+        except (ArithmeticError, ValueError) as exc:
             raise FinQAExecutionError(
                 "Exponentiation produced an invalid result."
             ) from exc
+
+        if isinstance(result, complex):
+            raise FinQAExecutionError(
+                "Exponentiation produced a complex result."
+            )
+
+        return result
     if operation == "greater":
         return "yes" if left > right else "no"
 
