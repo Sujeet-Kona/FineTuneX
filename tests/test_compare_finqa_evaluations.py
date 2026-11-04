@@ -100,6 +100,7 @@ def test_rejects_validation_provenance_mismatch():
             make_rows(),
         )
 
+
 def test_rejects_preprocessed_validation_artifact_mismatch():
     adapter_summary = make_summary("lora_adapter")
     adapter_summary["inputs"]["preprocessed_validation_sha256"] = "different"
