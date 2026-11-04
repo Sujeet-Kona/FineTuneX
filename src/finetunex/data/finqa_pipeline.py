@@ -48,28 +48,20 @@ def _validate_evidence_annotations(record: dict[str, Any]) -> dict[str, int]:
             else annotations_raw
         )
     except json.JSONDecodeError as exc:
-        raise FinQADatasetError(
-            f"{example_id}: gold_inds is not valid JSON."
-        ) from exc
+        raise FinQADatasetError(f"{example_id}: gold_inds is not valid JSON.") from exc
 
     if not isinstance(annotations, dict):
-        raise FinQADatasetError(
-            f"{example_id}: gold_inds must be a JSON object."
-        )
+        raise FinQADatasetError(f"{example_id}: gold_inds must be a JSON object.")
 
     pre_text = record.get("pre_text")
     post_text = record.get("post_text")
     table = record.get("table")
 
     if not isinstance(pre_text, list) or not isinstance(post_text, list):
-        raise FinQADatasetError(
-            f"{example_id}: pre_text and post_text must be lists."
-        )
+        raise FinQADatasetError(f"{example_id}: pre_text and post_text must be lists.")
 
     if not isinstance(table, list):
-        raise FinQADatasetError(
-            f"{example_id}: table must be a list."
-        )
+        raise FinQADatasetError(f"{example_id}: table must be a list.")
 
     combined_text = pre_text + post_text
     gold_text_indices = set()
@@ -112,8 +104,7 @@ def _validate_evidence_annotations(record: dict[str, Any]) -> dict[str, int]:
 
             if index >= len(table):
                 raise FinQADatasetError(
-                    f"{example_id}: {key} is out of range for "
-                    f"{len(table)} table rows."
+                    f"{example_id}: {key} is out of range for {len(table)} table rows."
                 )
 
             if not isinstance(description, str) or not description.strip():
@@ -161,7 +152,6 @@ def _validate_evidence_annotations(record: dict[str, Any]) -> dict[str, int]:
         "ann_text_annotations": len(ann_text),
         "ann_table_annotations": len(ann_table),
     }
-
 
 
 def _sha256_file(path: Path) -> str:
@@ -230,14 +220,9 @@ def validate_dataset(
             )
 
         if len(ids) != len(set(ids)):
-            raise FinQADatasetError(
-                f"{split_name} contains duplicate example IDs."
-            )
+            raise FinQADatasetError(f"{split_name} contains duplicate example IDs.")
 
-    split_ids = {
-        name: set(split["id"])
-        for name, split in dataset.items()
-    }
+    split_ids = {name: set(split["id"]) for name, split in dataset.items()}
 
     for first in EXPECTED_SPLITS:
         for second in EXPECTED_SPLITS:
@@ -248,8 +233,7 @@ def validate_dataset(
 
             if overlap:
                 raise FinQADatasetError(
-                    f"ID overlap between {first} and {second}: "
-                    f"{len(overlap)} records."
+                    f"ID overlap between {first} and {second}: {len(overlap)} records."
                 )
 
 
@@ -278,9 +262,7 @@ def audit_dataset(
             example_id = record["id"]
             question = record["question"].strip().casefold()
 
-            question_locations[question].append(
-                f"{split_name}:{example_id}"
-            )
+            question_locations[question].append(f"{split_name}:{example_id}")
             duplicate_ids[example_id].append(split_name)
 
             if not record["answer"].strip():
@@ -316,26 +298,28 @@ def audit_dataset(
             split_names = {location.split(":", 1)[0] for location in locations}
 
             if len(split_names) > 1:
-                report["cross_split_duplicate_questions"].append({
-                    "question_sha256": hashlib.sha256(
-                        question.encode("utf-8")
-                    ).hexdigest(),
-                    "locations": locations,
-                })
+                report["cross_split_duplicate_questions"].append(
+                    {
+                        "question_sha256": hashlib.sha256(
+                            question.encode("utf-8")
+                        ).hexdigest(),
+                        "locations": locations,
+                    }
+                )
 
     for example_id, split_names in duplicate_ids.items():
         if len(split_names) > 1:
-            report["cross_split_duplicate_ids"].append({
-                "id": example_id,
-                "splits": split_names,
-            })
+            report["cross_split_duplicate_ids"].append(
+                {
+                    "id": example_id,
+                    "splits": split_names,
+                }
+            )
 
     report["cross_split_duplicate_question_count"] = len(
         report["cross_split_duplicate_questions"]
     )
-    report["cross_split_duplicate_id_count"] = len(
-        report["cross_split_duplicate_ids"]
-    )
+    report["cross_split_duplicate_id_count"] = len(report["cross_split_duplicate_ids"])
 
     return report
 
@@ -365,9 +349,7 @@ def prepare_finqa_dataset(
 
         with output_path.open("w", encoding="utf-8") as file:
             for record in records:
-                file.write(
-                    json.dumps(record, ensure_ascii=False) + "\n"
-                )
+                file.write(json.dumps(record, ensure_ascii=False) + "\n")
 
         output_hashes[split_name] = _sha256_file(output_path)
 
@@ -378,12 +360,10 @@ def prepare_finqa_dataset(
         "repository": repository,
         "revision": revision,
         "split_counts": {
-            name: len(records)
-            for name, records in records_by_split.items()
+            name: len(records) for name, records in records_by_split.items()
         },
         "split_fingerprints": {
-            name: getattr(dataset[name], "_fingerprint", None)
-            for name in dataset
+            name: getattr(dataset[name], "_fingerprint", None) for name in dataset
         },
         "processed_sha256": output_hashes,
         "audit": audit,
