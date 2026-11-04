@@ -65,11 +65,7 @@ class FinQARequest(BaseModel):
         if any(len(row) != width for row in table):
             raise ValueError("Table rows must have a consistent width")
 
-        if any(
-            not cell.strip() or len(cell) > 1000
-            for row in table
-            for cell in row
-        ):
+        if any(not cell.strip() or len(cell) > 1000 for row in table for cell in row):
             raise ValueError(
                 "Table cells must be non-empty and at most 1000 characters"
             )
