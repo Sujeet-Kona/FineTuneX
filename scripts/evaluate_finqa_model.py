@@ -72,6 +72,7 @@ def load_validation_records(
         raise ValueError("sample_seed must be a non-negative integer")
 
     records: list[dict[str, Any]] = []
+    record_ids: set[str] = set()
     with VALIDATION_PATH.open(encoding="utf-8") as file:
         for line_number, line in enumerate(file, start=1):
             if not line.strip():
@@ -92,6 +93,12 @@ def load_validation_records(
             missing = [key for key in required if key not in record]
             if missing:
                 raise ValueError(f"Validation line {line_number} is missing {missing}")
+            record_id = record["id"]
+            if not isinstance(record_id, str) or not record_id:
+                raise ValueError(f"Validation line {line_number} has an invalid ID")
+            if record_id in record_ids:
+                raise ValueError(f"Duplicate validation record ID: {record_id}")
+            record_ids.add(record_id)
             records.append(record)
 
     if not records:
