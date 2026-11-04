@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - "feat/base-model-benchmark"
+      - "feat/finqa-prompt-contract-v3"
 
 permissions:
   contents: read
