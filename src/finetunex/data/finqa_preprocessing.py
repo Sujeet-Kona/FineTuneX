@@ -215,9 +215,7 @@ def preprocess_record(
                 token_budget=effective_evidence_budget - complete_table_tokens,
                 token_counter=count_tokens,
             )
-            selected_passages = [
-                (item.index, item.content) for item in selection.items
-            ]
+            selected_passages = [(item.index, item.content) for item in selection.items]
             table_context = complete_table
             table_strategy = "complete"
             selected_table_rows = list(range(1, len(table)))
@@ -238,13 +236,9 @@ def preprocess_record(
             selected_table_items = [
                 item for item in selection.items if item.kind == "table"
             ]
-            table_context = "\n".join(
-                item.content for item in selected_table_items
-            )
+            table_context = "\n".join(item.content for item in selected_table_items)
             table_strategy = "selected_rows"
-            selected_table_rows = [
-                item.index for item in selected_table_items
-            ]
+            selected_table_rows = [item.index for item in selected_table_items]
             evidence_tokens = selection.used_tokens
 
         if evidence_tokens > effective_evidence_budget:
@@ -286,9 +280,7 @@ def preprocess_record(
             )
 
         overflow = sequence_length - max_sequence_length
-        effective_evidence_budget = max(
-            0, effective_evidence_budget - overflow - 8
-        )
+        effective_evidence_budget = max(0, effective_evidence_budget - overflow - 8)
         evidence_budget_reductions += 1
 
     labels = [-100] * prompt_length + input_ids[prompt_length:]
