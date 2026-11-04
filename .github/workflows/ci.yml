@@ -8,7 +8,7 @@ on:
   pull_request:
     branches:
       - main
-      - "feat/base-model-benchmark"
+      - "feat/**"
 
 permissions:
   contents: read
