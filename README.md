@@ -54,6 +54,17 @@ python scripts/evaluate_finqa_model.py \
   --output-dir artifacts/evaluation/pilot-chat-32
 ```
 
+After both runs finish, verify the paired comparison:
+
+```bash
+python scripts/compare_finqa_evaluations.py
+```
+
+The comparison utility fails closed if validation/configuration provenance,
+evaluation settings, record ordering, expected answers, or exact prompt hashes
+differ. It reports adapter-minus-base deltas; it does not claim statistical
+significance from a small pilot subset.
+
 Do not compare the runs unless their ordered record IDs and per-record
 `prompt_sha256` values match. A 32-example prefix is a smoke benchmark, not
 a full validation result and not a test-set result. Keep the test split held
@@ -75,6 +86,8 @@ out until model and evaluation decisions are frozen.
 - [x] Dedicated FinQA dataset preparation and validation pipeline.
 - [x] FinQA program parser and deterministic executor.
 - [x] Gold-program execution audit across all 8,281 examples.
-- [x] Model feasibility and base-model evaluation path.\n- [ ] Measured base-model benchmark and controlled adapter comparison.
-- [x] LoRA pilot training and adapter inference.\n- [ ] Full-data LoRA training and comparative evaluation.
+- [x] Model feasibility and base-model evaluation path.
+- [ ] Measured base-model benchmark and controlled adapter comparison.
+- [x] LoRA pilot training and adapter inference.
+- [ ] Full-data LoRA training and comparative evaluation.
 - [ ] Artifact packaging and inference API.
