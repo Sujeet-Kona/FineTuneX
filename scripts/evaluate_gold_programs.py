@@ -190,6 +190,10 @@ def main() -> None:
     reference_mismatch_count = sum(
         len(result["reference_mismatches"]) for result in results
     )
+    print(
+        "  Reference execution errors:",
+        sum(len(result["reference_errors"]) for result in results),
+    )
     print("  Reference mismatches:", reference_mismatch_count)
     executor_disagreement_count = sum(
         len(result["executor_disagreements"]) for result in results
