@@ -16,6 +16,7 @@ from evaluate_finqa_model import (  # noqa: E402
     validate_preprocessing_provenance,
 )
 
+
 def test_inference_record_excludes_gold_fields():
     record = {
         "id": "example-1",
