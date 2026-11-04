@@ -131,12 +131,17 @@ def test_reduces_evidence_budget_to_fit_sequence_without_truncation():
     record = make_record()
     record["pre_text"] = ["Revenue " + "growth " * 600]
 
-    no_evidence = preprocess(record, evidence_budget=0)["metadata"]
+    no_passages_record = {
+        **record,
+        "pre_text": [],
+        "post_text": [],
+    }
+    no_passages = preprocess(no_passages_record, evidence_budget=1024)["metadata"]
     full_evidence = preprocess(record, evidence_budget=1024)["metadata"]
-    assert full_evidence["sequence_length"] > no_evidence["sequence_length"]
+    assert full_evidence["sequence_length"] > no_passages["sequence_length"]
 
     max_sequence_length = (
-        no_evidence["sequence_length"] + full_evidence["sequence_length"]
+        no_passages["sequence_length"] + full_evidence["sequence_length"]
     ) // 2
     result = preprocess(
         record,
