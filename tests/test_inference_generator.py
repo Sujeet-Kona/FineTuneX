@@ -358,7 +358,11 @@ def test_loads_unadapted_base_model_with_pinned_local_revision(monkeypatch):
         calls["model"] = (name, kwargs)
         return model
 
-    monkeypatch.setattr(generator, "_select_inference_device", lambda: torch.device("cpu"))
+    monkeypatch.setattr(
+        generator,
+        "_select_inference_device",
+        lambda: torch.device("cpu"),
+    )
     monkeypatch.setattr(
         generator.AutoTokenizer, "from_pretrained", load_tokenizer
     )
@@ -374,7 +378,10 @@ def test_loads_unadapted_base_model_with_pinned_local_revision(monkeypatch):
     assert components.model is model
     assert components.tokenizer is tokenizer
     assert components.checkpoint_metadata["model_revision"] == REVISION
-    assert components.checkpoint_metadata["training_config"]["max_sequence_length"] == 1536
+    assert (
+        components.checkpoint_metadata["training_config"]["max_sequence_length"]
+        == 1536
+    )
     assert calls["tokenizer"][1]["revision"] == REVISION
     assert calls["tokenizer"][1]["local_files_only"] is True
     assert calls["model"][1]["revision"] == REVISION
