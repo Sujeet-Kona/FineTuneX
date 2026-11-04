@@ -45,6 +45,7 @@ def compare(
     for key in (
         "examples_evaluated",
         "max_new_tokens",
+        "max_prompt_tokens",
         "evidence_budget",
         "generation",
         "answer_reference",
@@ -57,6 +58,7 @@ def compare(
 
     for key in (
         "validation_sha256",
+        "preprocessed_validation_sha256",
         "model_config_sha256",
         "training_config_sha256",
         "preprocessing_config_sha256",
