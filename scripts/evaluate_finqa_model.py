@@ -99,7 +99,7 @@ def inference_only_record(record: dict[str, Any]) -> dict[str, Any]:
         key: record[key] for key in ("id", "question", "pre_text", "post_text", "table")
     }
 
-def validate_preprocessing_provenance() -> tuple[dict[str, Any], str, str, str]:
+def validate_preprocessing_provenance() -> tuple[str, str, str]:
     """Verify raw evaluation data is the exact source of the tokenized artifacts."""
     manifest_path = PROJECT_ROOT / "artifacts/preprocessed/finqa/manifest.json"
     preprocessed_validation_path = (
@@ -138,7 +138,6 @@ def validate_preprocessing_provenance() -> tuple[dict[str, Any], str, str, str]:
         )
 
     return (
-        manifest,
         sha256_file(manifest_path),
         source_validation_sha256,
         preprocessed_validation_sha256,
@@ -295,7 +294,6 @@ def main() -> None:
     print("Evidence budget:", evidence_budget)
     print("Maximum prompt tokens:", max_prompt_tokens)
     (
-        preprocessing_manifest,
         preprocessing_manifest_sha256,
         source_validation_sha256,
         preprocessed_validation_sha256,
