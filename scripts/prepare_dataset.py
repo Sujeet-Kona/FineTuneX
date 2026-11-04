@@ -5,9 +5,7 @@ from finetunex.data.finqa_pipeline import prepare_finqa_dataset
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description="Prepare the official FinQA dataset."
-    )
+    parser = argparse.ArgumentParser(description="Prepare the official FinQA dataset.")
     parser.add_argument(
         "--config",
         default="configs/dataset.yaml",
