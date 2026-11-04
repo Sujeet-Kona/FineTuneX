@@ -35,6 +35,7 @@ def make_configs():
         {
             "training": {
                 "method": "lora",
+                "max_sequence_length": 1536,
                 "lora": {
                     "rank": 8,
                     "alpha": 16,
@@ -332,6 +333,7 @@ def test_loads_unadapted_base_model_with_pinned_local_revision(monkeypatch):
             self.config = SimpleNamespace(use_cache=False)
             self.moved_to = None
             self.eval_called = False
+            self.parameters_frozen = False
 
         def gradient_checkpointing_disable(self):
             pass
@@ -342,6 +344,10 @@ def test_loads_unadapted_base_model_with_pinned_local_revision(monkeypatch):
 
         def eval(self):
             self.eval_called = True
+            return self
+
+        def requires_grad_(self, requires_grad=True):
+            self.parameters_frozen = not requires_grad
             return self
 
         def named_parameters(self):
@@ -388,6 +394,7 @@ def test_loads_unadapted_base_model_with_pinned_local_revision(monkeypatch):
     assert calls["model"][1]["local_files_only"] is True
     assert model.config.use_cache is True
     assert model.eval_called is True
+    assert model.parameters_frozen is True
 
 
 def test_base_loader_rejects_unpinned_model_revision():
