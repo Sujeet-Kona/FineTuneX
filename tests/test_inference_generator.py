@@ -3,6 +3,7 @@ import json
 import pytest
 import torch
 
+from finetunex.data.finqa_preprocessing import PROMPT_VERSION
 from finetunex.inference.generator import (
     InferenceComponents,
     _validate_checkpoint,
@@ -61,7 +62,7 @@ def make_checkpoint(tmp_path):
 
     metadata = {
         "checkpoint_schema_version": 2,
-        "prompt_version": "finqa-program-v2-chat",
+        "prompt_version": PROMPT_VERSION,
         "model": "Qwen/Qwen3-0.6B",
         "model_revision": REVISION,
         "tokenizer": "Qwen/Qwen3-0.6B",
