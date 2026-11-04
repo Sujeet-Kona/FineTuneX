@@ -1,17 +1,51 @@
 dataset:
-  name: local-jsonl-smoke-test
-  format: jsonl
-  input_path: data/raw
-  output_path: data/processed
+  name: finqa
+  task: financial-numerical-reasoning
 
-  columns:
-    instruction: instruction
-    input: input
-    output: output
+  source:
+    repository: bevaya/FinQA
+    revision: 3d6a736bc67e06bc15fbf3618d88204a57c5b25e
 
-  split:
-    train: 0.80
-    validation: 0.10
-    test: 0.10
+  expected:
+    train_examples: 6251
+    validation_examples: 883
+    test_examples: 1147
+    total_examples: 8281
 
-  seed: 42
+  required_fields:
+    - id
+    - pre_text
+    - post_text
+    - table
+    - table_ori
+    - question
+    - answer
+    - exe_ans
+    - explanation
+    - ann_table_rows
+    - ann_text_rows
+    - steps
+    - program
+    - program_re
+    - gold_inds
+
+  split_policy:
+    preserve_official_splits: true
+
+  audit:
+    detect_duplicate_ids: true
+    detect_duplicate_questions: true
+    detect_blank_answers: true
+    detect_final_step_mismatches: true
+    remove_examples: false
+
+  output:
+    directory: data/processed/finqa
+    format: jsonl
+
+  attribution:
+    dataset: FinQA
+    paper: "FinQA: A Dataset of Numerical Reasoning over Financial Data"
+    paper_url: "https://aclanthology.org/2021.emnlp-main.300/"
+    annotation_license: MIT
+    table_data_license: CDLA-Permissive-1.0
