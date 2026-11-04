@@ -1,0 +1,23 @@
+services:
+  finetunex-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: finetunex-api:local
+    ports:
+      - "8000:8000"
+    environment:
+      FINETUNEX_CHECKPOINT: /models/adapter
+      HF_HOME: /models/huggingface
+      HF_HUB_OFFLINE: "1"
+      TRANSFORMERS_OFFLINE: "1"
+    volumes:
+      - ${FINETUNEX_CHECKPOINT:?Set FINETUNEX_CHECKPOINT to a trained v3 adapter}:/models/adapter:ro
+      - ${HF_CACHE_PATH:?Set HF_CACHE_PATH to the Hugging Face cache directory}:/models/huggingface:ro
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

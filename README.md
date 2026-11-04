@@ -143,6 +143,26 @@ model output is reported as a parse failure; it is not silently converted into
 an answer. The returned numerical value is the deterministic executor result,
 not a free-form model-generated answer.
 
+## Docker deployment (NVIDIA GPU)
+
+The container target is a Linux host with an NVIDIA GPU and the NVIDIA
+Container Toolkit. Docker Desktop on Apple Silicon does not expose the Mac's
+MPS accelerator to a Linux container; run the API directly on the Mac for MPS.
+
+Build and start the service after exporting the local adapter and Hugging Face
+cache directories:
+
+```bash
+export FINETUNEX_CHECKPOINT="$PWD/artifacts/checkpoints/<v3-checkpoint-name>"
+export HF_CACHE_PATH="$HOME/.cache/huggingface"
+docker compose up --build
+```
+
+The adapter and model cache are mounted read-only. The image runs in offline
+Hugging Face mode and will fail at startup if the pinned model/tokenizer files
+are not already present in the mounted cache. The service listens on port
+8000; verify readiness with `curl http://localhost:8000/health/ready`.
+
 ## Engineering Principles
 
 - Preserve official benchmark splits.
@@ -164,4 +184,4 @@ not a free-form model-generated answer.
 - [x] FastAPI inference endpoint implementation (local validation pending).
 - [ ] Re-preprocess data and train/evaluate a v3 adapter.
 - [ ] Full-data LoRA training and comparative evaluation.
-- [ ] Docker and automated CI validation.
+- [x] CUDA Docker image and GPU Compose deployment definition (runtime validation pending).\n- [ ] Automated CI validation.
