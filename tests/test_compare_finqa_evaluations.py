@@ -13,6 +13,7 @@ def make_summary(source):
         "scope": {
             "examples_evaluated": 2,
             "max_new_tokens": 128,
+            "max_prompt_tokens": 1408,
             "evidence_budget": 1024,
             "generation": "greedy",
             "answer_reference": "exe_ans",
@@ -20,6 +21,7 @@ def make_summary(source):
         },
         "inputs": {
             "validation_sha256": "validation",
+            "preprocessed_validation_sha256": "tokenized-validation",
             "model_config_sha256": "model-config",
             "training_config_sha256": "training-config",
             "preprocessing_config_sha256": "preprocessing-config",
@@ -91,6 +93,31 @@ def test_rejects_validation_provenance_mismatch():
     adapter_summary["inputs"]["validation_sha256"] = "different"
 
     with pytest.raises(ValueError, match="Input provenance mismatch"):
+        compare(
+            make_summary("base_model"),
+            make_rows(),
+            adapter_summary,
+            make_rows(),
+        )
+
+def test_rejects_preprocessed_validation_artifact_mismatch():
+    adapter_summary = make_summary("lora_adapter")
+    adapter_summary["inputs"]["preprocessed_validation_sha256"] = "different"
+
+    with pytest.raises(ValueError, match="Input provenance mismatch"):
+        compare(
+            make_summary("base_model"),
+            make_rows(),
+            adapter_summary,
+            make_rows(),
+        )
+
+
+def test_rejects_prompt_budget_mismatch():
+    adapter_summary = make_summary("lora_adapter")
+    adapter_summary["scope"]["max_prompt_tokens"] = 1200
+
+    with pytest.raises(ValueError, match="Scope mismatch: max_prompt_tokens"):
         compare(
             make_summary("base_model"),
             make_rows(),
