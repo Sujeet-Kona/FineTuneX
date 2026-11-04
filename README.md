@@ -249,5 +249,6 @@ The earlier v3 32-example pilot produced these results:
 
 The pilot showed improved program formatting and executability, but weak
 numerical reasoning. These measurements used the v3 prompt-budget policy and
-are not v4 results. The v4 pipeline must be re-preprocessed, retrained, and
-evaluated before any updated model-quality claim is made.
+are not v4 results. V4 preprocessing and full prompt parity are complete. A fresh v4 adapter
+and full validation comparison are still required before updated model-quality
+claims can be made.
