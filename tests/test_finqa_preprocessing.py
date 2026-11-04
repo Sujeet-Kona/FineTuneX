@@ -4,6 +4,7 @@ import pytest
 
 from finetunex.data.finqa_preprocessing import (
     PROMPT_VERSION,
+    SYSTEM_INSTRUCTION,
     preprocess_record,
 )
 
@@ -76,6 +77,17 @@ def preprocess(record=None, **kwargs):
         tokenizer_revision="c1899de289a04d12100db370d81485cdf75e47ca",
         **kwargs,
     )
+
+
+def test_prompt_contract_defines_operations_and_reasoning_constraints():
+    assert PROMPT_VERSION == "finqa-program-v3-reasoning"
+    assert "subtract(a, b) computes a minus b" in SYSTEM_INSTRUCTION
+    assert "divide(a, b) computes a divided by b" in SYSTEM_INSTRUCTION
+    assert "zero-based" in SYSTEM_INSTRUCTION
+    assert "percentage change" in SYSTEM_INSTRUCTION
+    assert "do not subtract the count" in SYSTEM_INSTRUCTION
+    assert "preserve" in SYSTEM_INSTRUCTION and "units" in SYSTEM_INSTRUCTION
+    assert "Output the program only." in SYSTEM_INSTRUCTION
 
 
 def test_builds_tokenized_example_with_target_only_labels():
