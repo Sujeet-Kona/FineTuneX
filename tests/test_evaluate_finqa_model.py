@@ -108,7 +108,7 @@ def test_validation_provenance_accepts_matching_source_and_artifact(
     import hashlib
     import json
 
-    import scripts.evaluate_finqa_model as evaluator
+    import evaluate_finqa_model as evaluator
 
     processed_dir = tmp_path / "artifacts" / "preprocessed" / "finqa"
     processed_dir.mkdir(parents=True)
@@ -143,7 +143,7 @@ def test_validation_provenance_accepts_matching_source_and_artifact(
 def test_validation_provenance_rejects_wrong_source_hash(tmp_path, monkeypatch):
     import json
 
-    import scripts.evaluate_finqa_model as evaluator
+    import evaluate_finqa_model as evaluator
 
     processed_dir = tmp_path / "artifacts" / "preprocessed" / "finqa"
     processed_dir.mkdir(parents=True)
