@@ -1,6 +1,7 @@
 name: CI
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -9,6 +10,7 @@ on:
     branches:
       - main
       - "feat/base-model-benchmark"
+      - "feat/fastapi-inference"
 
 permissions:
   contents: read
