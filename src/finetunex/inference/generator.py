@@ -296,7 +296,6 @@ def load_inference_components(
     )
 
 
-
 def load_base_inference_components(
     model_config: dict[str, Any],
     training_config: dict[str, Any],
