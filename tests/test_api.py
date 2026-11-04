@@ -1,7 +1,6 @@
 from types import SimpleNamespace
 
 import pytest
-
 from fastapi.testclient import TestClient
 
 import finetunex.api.app as api_module
