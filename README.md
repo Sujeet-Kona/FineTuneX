@@ -1,30 +1,43 @@
 # FineTuneX
 
-A reproducible LLM fine-tuning and evaluation pipeline.
+**Reproducible Financial Reasoning LLM Fine-Tuning and Evaluation Pipeline**
 
-FineTuneX explores the complete lifecycle of adapting an instruction-
-following language model to a defined task.
+FineTuneX explores the lifecycle of adapting a pretrained language model
+to numerical reasoning over financial reports.
+
+## Benchmark
+
+FinQA — a financial question-answering benchmark containing report
+context, tables, numerical questions and annotated reasoning programs.
 
 ## Pipeline
 
-1. Dataset validation and preprocessing
-2. Reproducible train, validation and test splits
-3. Base-model evaluation
-4. LoRA / QLoRA fine-tuning
-5. Fine-tuned model evaluation
-6. Baseline comparison
-7. Adapter packaging and model export
-8. Inference through an API
+1. Financial dataset validation and preprocessing.
+2. Reproducible dataset and experiment management.
+3. Base-model evaluation.
+4. Parameter-efficient LoRA fine-tuning.
+5. Structured reasoning-program generation.
+6. Deterministic program validation and execution.
+7. Baseline comparison and error analysis.
+8. Adapter packaging and provenance.
+9. FastAPI inference.
+10. Docker and automated testing.
 
-## Engineering principles
+## Engineering Principles
 
-- Reproducible experiments
-- Evaluation before and after fine-tuning
-- No evaluation-data leakage
-- Explicit model and dataset configurations
-- Honest reporting of model performance
-- Minimal infrastructure and clear responsibilities
+- Preserve official benchmark splits.
+- Use deterministic, restricted program execution.
+- Evaluate numerical results rather than fluent text alone.
+- Keep baseline and fine-tuned evaluation comparable.
+- Record dataset, model and experiment provenance.
+- Report measured results without unsupported claims.
 
-## Project status
+## Project Status
 
-Phase 1: Repository foundation — in progress.
+- [x] Repository foundation.
+- [x] FinQA source inspection and initial data audit.
+- [ ] Dedicated FinQA preprocessing pipeline.
+- [ ] Official program executor.
+- [ ] Model feasibility and baseline.
+- [ ] LoRA fine-tuning.
+- [ ] Evaluation and inference.

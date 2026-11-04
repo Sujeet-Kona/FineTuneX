@@ -1,241 +1,179 @@
 # FineTuneX — System Architecture
 
-## 1. Project Objective
+## 1. Objective
 
-FineTuneX is a reproducible LLM fine-tuning, evaluation, and serving pipeline.
+FineTuneX is a reproducible financial-reasoning LLM fine-tuning,
+evaluation and inference pipeline.
 
-It takes a pretrained instruction model, fine-tunes it for a defined task using
-parameter-efficient fine-tuning (LoRA), evaluates the result against the
-original model, records experiment provenance, and exposes the validated model
-through an inference API.
+It adapts a pretrained language model using LoRA, evaluates its
+reasoning programs through a deterministic executor, records
+experiment provenance and serves validated predictions through an API.
 
-The project must demonstrate a complete and testable model lifecycle—not
-merely a training script.
+## 2. Benchmark
 
-## 2. Initial Benchmark and Task
+- Dataset: FinQA.
+- Source: `bevaya/FinQA`.
+- Revision: `3d6a736bc67e06bc15fbf3618d88204a57c5b25e`.
+- Task: numerical reasoning over financial reports.
+- Input: report context, financial table and natural-language question.
+- Target: structured FinQA reasoning program.
+- Execution reference: `exe_ans`.
 
-- Dataset: Banking77.
-- Task: customer-support intent classification.
-- Number of classes: 77.
-- Input: a customer-support query.
-- Output: exactly one label from the benchmark's permitted intent labels.
+Official splits:
+- Train: 6,251.
+- Validation: 883.
+- Test: 1,147.
 
-The benchmark's official test split must remain untouched.
+The official splits must remain unchanged.
 
-The official training split will be divided into training and validation
-subsets using stratified sampling and a fixed random seed.
+## 3. Workflow
 
-The exact dataset source, revision, schema, and split integrity must be
-verified during dataset implementation and recorded in the experiment
-manifest.
+1. Configuration and reproducibility.
+2. Dataset ingestion and validation.
+3. Financial context and table preprocessing.
+4. Base-model evaluation.
+5. LoRA fine-tuning.
+6. Structured program parsing and validation.
+7. Deterministic program execution.
+8. Comparative evaluation and error analysis.
+9. Adapter packaging and experiment provenance.
+10. FastAPI inference.
+11. Docker delivery and automated testing.
 
-Banking77 is a public customer-support benchmark. It is not proprietary
-payment-provider data and is not a fraud-detection dataset.
+## 4. Dataset Contract
 
-## 3. System Workflow
+Preserve all original FinQA fields.
 
-1. Configuration
-   - Model identifier and revision.
-   - Dataset identifier and revision.
-   - Random seed.
-   - Training and evaluation parameters.
-   - Hardware and environment metadata.
+The initial training target is `program`.
 
-2. Dataset preparation
-   - Load the verified dataset.
-   - Validate required fields and labels.
-   - Normalize text consistently.
-   - Audit duplicates and split overlap.
-   - Create a stratified train/validation split from official training data.
-   - Preserve the official test split.
-   - Tokenize and record dataset fingerprints.
+Keep `program_re`, `steps`, `answer`, `exe_ans`, `explanation`,
+and evidence annotations available for validation and analysis.
 
-3. Baseline evaluation
-   - Run the pretrained model before fine-tuning.
-   - Use a fixed prompt and output-parsing protocol.
-   - Evaluate on the official test split.
-   - Save predictions and metrics.
+Do not silently remove blank answers, duplicates or annotation
+inconsistencies. Report them in the dataset manifest.
 
-4. Fine-tuning
-   - Load the selected pretrained model.
-   - Apply LoRA adapters.
-   - Train using the training split.
-   - Use validation data for model and hyperparameter decisions.
-   - Record training configuration, loss, runtime, and checkpoints.
+## 5. Reasoning Program Execution
 
-5. Candidate evaluation
-   - Evaluate the fine-tuned model on the same official test examples.
-   - Use the same prompt, parser, and metrics as baseline evaluation.
-   - Produce aggregate and per-class metrics.
-   - Record errors and invalid predictions.
-   - Do not claim improvement unless measured results support it.
+Implement the FinQA operation semantics using a restricted,
+deterministic interpreter.
 
-6. Experiment and artifact management
-   - Save adapter weights and tokenizer-related files as required.
-   - Record base-model identifier and revision.
-   - Record dataset fingerprint, seed, configuration, and package versions.
-   - Associate evaluation results with the exact model artifact.
-   - Record whether the candidate passed the promotion criteria.
+Supported operation families include:
 
-7. Inference service
-   - Load a selected, validated model artifact.
-   - Expose a versioned FastAPI prediction endpoint.
-   - Validate requests and model outputs.
-   - Provide health and readiness endpoints.
-   - Return the predicted intent and model/version metadata.
-   - Do not fabricate confidence scores.
+- add
+- subtract
+- multiply
+- divide
+- exp
+- greater
+- table_sum
+- table_average
+- table_max
+- table_min
 
-8. Release
-   - Run unit and integration tests.
-   - Build a Docker image.
-   - Document setup, training, evaluation, and inference.
-   - Provide a reproducible end-to-end workflow.
+Support intermediate references such as `#0`, percentage values
+and the constants defined by the original FinQA evaluator.
 
-## 4. Evaluation Protocol
+Do not use Python `eval` or execute generated source code.
 
-The evaluation pipeline will report:
+The executor must be tested against the original FinQA evaluation
+semantics before it is used for model evaluation.
 
-- Accuracy.
-- Macro F1.
-- Weighted F1.
-- Per-class precision, recall, and F1.
-- Confusion matrix.
-- Invalid prediction rate.
+## 6. Evaluation
+
+Primary metric:
+- Execution accuracy.
+
+Additional metrics:
+- Program accuracy.
+- Program validity rate.
+- Numerical answer accuracy.
+- Error category counts.
 - Inference latency.
 
-The baseline and fine-tuned model must use the same test examples,
-prompting protocol, output parser, and metric implementation.
+Use the same examples and evaluator for base and fine-tuned models.
 
-The official test split must not be used for training, prompt tuning,
-hyperparameter selection, or model selection.
+The official test split is reserved for final evaluation.
+Validation data is used for development and model selection.
 
-Training loss alone is not evidence of model improvement.
+## 7. Model and Hardware
 
-## 5. Model Output Contract
+Development hardware: Apple Silicon MacBook Air, 16 GB unified memory.
 
-The model must return exactly one valid Banking77 intent label.
+Initial model candidate: Qwen3-0.6B, not yet locked.
 
-The output parser may normalize surrounding whitespace and label casing.
-It must reject outputs that do not match the permitted label set.
+Validate model loading, generation, MPS compatibility, PEFT
+compatibility, training-step completion, memory usage and runtime
+before finalizing the model configuration.
 
-Invalid outputs must be measured and reported, not silently converted into
-valid predictions.
+Do not assume CUDA-specific QLoRA support on Apple Silicon.
 
-No confidence score will be returned unless a defensible confidence
-estimation method is implemented and evaluated.
-
-## 6. Technology
-
-Core implementation:
+## 8. Technology
 
 - Python
 - PyTorch
-- Hugging Face Transformers
-- Hugging Face Datasets
+- Hugging Face Transformers and Datasets
 - PEFT / LoRA
 - scikit-learn
-- FastAPI
-- Pydantic
-- pytest
-- Ruff
+- FastAPI and Pydantic
+- pytest and Ruff
 - Docker
 
-Optional additions require a demonstrated need:
+Optional technologies require a demonstrated need.
 
-- QLoRA
-- MLflow
-- vLLM
+## 9. Experiment Provenance
 
-The initial implementation will not depend on Kubernetes, Kafka,
-distributed training, a frontend dashboard, or a microservice architecture.
+Record:
 
-## 7. Hardware and Model Feasibility
-
-Development hardware: Apple Silicon MacBook Air with 16 GB unified memory.
-
-Qwen3-0.6B is the initial model candidate, not a confirmed final selection.
-
-Before locking the model, verify:
-
-- Model and tokenizer load successfully.
-- The model can generate a valid response.
-- PyTorch detects and uses the available MPS device.
-- PEFT can attach LoRA adapters to the model.
-- A small training step completes.
-- Memory use and runtime are acceptable.
-
-Do not assume CUDA-specific quantization or QLoRA support is available on MPS.
-
-If the candidate cannot be trained reliably on the target hardware, reassess
-the model or training approach and document the decision.
-
-## 8. Reproducibility Requirements
-
-Every experiment must record:
-
-- Model identifier and exact revision.
-- Dataset identifier, revision, and fingerprint.
-- Training, validation, and test split information.
+- Model identifier and revision.
+- Dataset repository and revision.
+- Dataset fingerprints and processed-file hashes.
+- Train and validation configuration.
 - Random seed.
-- Prompt and output-parser versions.
-- Training and LoRA configuration.
-- Python and relevant package versions.
+- Tokenizer and prompt versions.
+- LoRA configuration.
+- Python and dependency versions.
 - Hardware and device.
-- Training duration and recorded loss.
-- Adapter/artifact identity.
+- Training runtime and loss.
+- Adapter artifact identity.
 - Evaluation metrics and prediction outputs.
-- Candidate validation and promotion outcome.
 
-## 9. Quality Gates
+## 10. Promotion Criteria
 
-A successful training run is not automatically a successful model release.
+Training completion does not imply model promotion.
 
-A candidate can be promoted only after:
+A candidate must:
+1. Load successfully.
+2. Generate parseable reasoning programs.
+3. Execute safely.
+4. Complete evaluation.
+5. Be compared against the base model.
+6. Meet predefined acceptance criteria.
+7. Have its artifact and provenance recorded.
 
-1. Training completes successfully.
-2. The artifact can be loaded.
-3. Evaluation completes on the designated test set.
-4. Predictions satisfy the output contract.
-5. Results are compared against the baseline.
-6. The agreed acceptance criteria are met.
-7. The artifact and its provenance are recorded.
+Report regressions honestly.
 
-If the fine-tuned model performs worse, report that result honestly and do
-not promote it as an improvement.
+## 11. Out of Scope
 
-## 10. Explicitly Out of Scope
+- RAG applications.
+- Chatbot frontend.
+- Fraud classification.
+- Autonomous agents.
+- Distributed training.
+- Kubernetes and Kafka.
+- Unnecessary microservices.
+- Unsupported production-scale claims.
 
-The initial project will not build:
-
-- A RAG application or chatbot.
-- An autonomous agent.
-- A generic MLOps platform.
-- Distributed or multi-node training.
-- Kubernetes or Kafka infrastructure.
-- A frontend dashboard.
-- Unsupported claims about production scale or model quality.
-
-## 11. Implementation Phases
+## 12. Implementation Phases
 
 | Phase | Deliverable |
 |---|---|
-| 0 | Hardware, model, and LoRA feasibility |
-| 1 | Repository and configuration foundation |
-| 2 | Verified Banking77 dataset pipeline |
-| 3 | Pretrained-model baseline evaluation |
-| 4 | LoRA fine-tuning |
-| 5 | Fine-tuned evaluation and error analysis |
-| 6 | Experiment tracking and artifact lifecycle |
-| 7 | FastAPI inference service |
-| 8 | Docker, integration tests, and reproducible release |
-
-## 12. Decisions Still Requiring Validation
-
-- Final base-model selection.
-- Exact model and tokenizer revisions.
-- Compatible PyTorch, Transformers, and PEFT versions.
-- MPS training stability and memory requirements.
-- Final training hyperparameters.
-- Model promotion thresholds.
-
-These decisions must be based on experiments, not assumptions.
+| 0 | Hardware and model feasibility |
+| 1 | Repository foundation |
+| 2 | FinQA dataset pipeline |
+| 3 | Official program executor and tests |
+| 4 | Base-model baseline |
+| 5 | LoRA fine-tuning |
+| 6 | Evaluation and error analysis |
+| 7 | Experiment and artifact management |
+| 8 | FastAPI inference |
+| 9 | Docker and reproducible release |
