@@ -40,6 +40,7 @@ def evaluate_split(split: str) -> dict[str, object]:
     matched = 0
     errors: list[dict[str, object]] = []
     mismatches: list[dict[str, object]] = []
+    reference_errors: list[dict[str, object]] = []
     reference_mismatches: list[dict[str, object]] = []
     executor_disagreements: list[dict[str, object]] = []
     operation_counts: Counter[str] = Counter()
@@ -77,7 +78,7 @@ def evaluate_split(split: str) -> dict[str, object]:
                     program, record["table"]
                 )
             except (ArithmeticError, TypeError, ValueError) as exc:
-                reference_mismatches.append(
+                reference_errors.append(
                     {
                         "line": line_number,
                         "id": record["id"],
@@ -130,6 +131,7 @@ def evaluate_split(split: str) -> dict[str, object]:
         "matched": matched,
         "errors": errors,
         "mismatches": mismatches,
+        "reference_errors": reference_errors,
         "reference_mismatches": reference_mismatches,
         "executor_disagreements": executor_disagreements,
         "operation_counts": operation_counts,
@@ -218,6 +220,9 @@ def main() -> None:
         "execution_errors": len(all_errors),
         "exact_matches": total_matched,
         "answer_mismatches": len(all_mismatches),
+        "reference_execution_errors": sum(
+            len(result["reference_errors"]) for result in results
+        ),
         "reference_answer_mismatches": reference_mismatch_count,
         "custom_reference_disagreements": executor_disagreement_count,
         "execution_success_rate": (
@@ -232,6 +237,7 @@ def main() -> None:
                 "exact_matches": result["matched"],
                 "execution_errors": len(result["errors"]),
                 "answer_mismatches": len(result["mismatches"]),
+                "reference_execution_errors": len(result["reference_errors"]),
                 "reference_answer_mismatches": len(result["reference_mismatches"]),
                 "custom_reference_disagreements": len(result["executor_disagreements"]),
             }
@@ -239,6 +245,9 @@ def main() -> None:
         ],
         "errors": all_errors,
         "mismatches": all_mismatches,
+        "reference_errors": [
+            item for result in results for item in result["reference_errors"]
+        ],
         "reference_mismatches": [
             item for result in results for item in result["reference_mismatches"]
         ],
