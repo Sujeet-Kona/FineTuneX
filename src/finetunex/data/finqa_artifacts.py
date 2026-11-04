@@ -228,6 +228,7 @@ def preprocess_finqa_dataset(
     model_revision: str,
     evidence_budget: int,
     max_sequence_length: int,
+    max_prompt_tokens: int,
     config_hashes: dict[str, str],
     overwrite: bool = False,
 ) -> dict[str, Any]:
@@ -258,6 +259,16 @@ def preprocess_finqa_dataset(
         or max_sequence_length <= 0
     ):
         raise ValueError("max_sequence_length must be a positive integer")
+
+    if (
+        isinstance(max_prompt_tokens, bool)
+        or not isinstance(max_prompt_tokens, int)
+        or max_prompt_tokens <= 0
+        or max_prompt_tokens >= max_sequence_length
+    ):
+        raise ValueError(
+            "max_prompt_tokens must be positive and smaller than max_sequence_length"
+        )
 
     if output_dir.is_symlink():
         raise ValueError("Output directory cannot be a symbolic link")
@@ -336,6 +347,7 @@ def preprocess_finqa_dataset(
                     tokenizer_revision=tokenizer_revision,
                     evidence_budget=evidence_budget,
                     max_sequence_length=max_sequence_length,
+                    max_prompt_tokens=max_prompt_tokens,
                 )
 
                 if not isinstance(processed, dict):
@@ -381,6 +393,25 @@ def preprocess_finqa_dataset(
                     or not 0 < prompt_length < len(input_ids)
                 ):
                     raise RuntimeError(f"{record_id}: invalid prompt token count")
+
+                if (
+                    prompt_length > max_prompt_tokens
+                    or metadata.get("max_prompt_tokens") != max_prompt_tokens
+                ):
+                    raise RuntimeError(
+                        f"{record_id}: prompt exceeds configured token ceiling"
+                    )
+
+                target_length = metadata.get("target_tokens_including_eos")
+                if (
+                    isinstance(target_length, bool)
+                    or not isinstance(target_length, int)
+                    or target_length <= 0
+                    or target_length > max_sequence_length - max_prompt_tokens
+                ):
+                    raise RuntimeError(
+                        f"{record_id}: target exceeds configured generation reserve"
+                    )
 
                 if record_id in seen_ids:
                     raise ValueError(f"{split}: duplicate record ID {record_id}")
@@ -441,6 +472,7 @@ def preprocess_finqa_dataset(
                         sum(prompt_lengths) / len(prompt_lengths),
                         4,
                     ),
+                    "max": max(prompt_lengths),
                 },
                 "target_tokens_including_eos": {
                     "mean": round(
@@ -459,7 +491,7 @@ def preprocess_finqa_dataset(
             }
 
         manifest = {
-            "schema_version": 1,
+            "schema_version": 2,
             "dataset": {
                 "name": "FinQA",
                 "repository": source_repository,
@@ -483,6 +515,8 @@ def preprocess_finqa_dataset(
                 "prompt_version": PROMPT_VERSION,
                 "evidence_budget": evidence_budget,
                 "max_sequence_length": max_sequence_length,
+                "max_prompt_tokens": max_prompt_tokens,
+                "generation_reserve_tokens": max_sequence_length - max_prompt_tokens,
                 "splits": ["train", "validation"],
                 "test_split_included": False,
                 "truncation": False,

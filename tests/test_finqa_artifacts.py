@@ -59,6 +59,7 @@ def fake_preprocess(record, tokenizer, *, split, **kwargs):
             "split": split,
             "table_strategy": "complete",
             "prompt_tokens": 1,
+            "max_prompt_tokens": 1408,
             "target_tokens_including_eos": 1,
             "evidence_tokens": 12,
             "sequence_length": 2,
@@ -80,6 +81,7 @@ def run_preprocessing(input_dir, output_dir, *, overwrite=False):
         model_revision="test-revision",
         evidence_budget=1024,
         max_sequence_length=1536,
+        max_prompt_tokens=1408,
         config_hashes={"model.yaml": "abc123"},
         overwrite=overwrite,
     )
@@ -228,6 +230,7 @@ def test_rejects_boolean_record_counts(tmp_path, mocked_preprocessor):
             model_revision="test-revision",
             evidence_budget=1024,
             max_sequence_length=1536,
+            max_prompt_tokens=1408,
             config_hashes={},
         )
 

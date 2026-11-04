@@ -35,9 +35,9 @@ class FakeTokenizer:
 
         if text.endswith(self.eos_token):
             content = text[: -len(self.eos_token)]
-            return [ord(char) for char in content] + [self.eos_token_id]
+            return list(range(len(content[::5]))) + [self.eos_token_id]
 
-        return [ord(char) for char in text]
+        return list(range(len(text[::5])))
 
 
 def make_record():
@@ -134,7 +134,7 @@ def test_oversized_table_uses_same_fallback_as_training():
     inference = build_inference_prompt(
         record,
         tokenizer,
-        evidence_budget=75,
+        evidence_budget=10,
     )
     training = preprocess_record(
         record,
@@ -142,7 +142,7 @@ def test_oversized_table_uses_same_fallback_as_training():
         split="validation",
         tokenizer_name="Qwen/Qwen3-0.6B",
         tokenizer_revision="c1899de289a04d12100db370d81485cdf75e47ca",
-        evidence_budget=75,
+        evidence_budget=10,
         max_sequence_length=4096,
     )
 
@@ -155,7 +155,53 @@ def test_oversized_table_uses_same_fallback_as_training():
         inference["metadata"]["selected_passage_indices"]
         == training["metadata"]["selected_passage_indices"]
     )
-    assert inference["metadata"]["evidence_tokens"] <= 75
+    assert inference["metadata"]["evidence_tokens"] <= 10
+
+
+def test_prompt_budget_is_target_independent_and_matches_training():
+    record = make_record()
+    record["pre_text"] = [
+        "Revenue growth financial performance " * 35 + f"section {index}"
+        for index in range(4)
+    ]
+    tokenizer = FakeTokenizer()
+    settings = {"evidence_budget": 1024, "max_prompt_tokens": 700}
+
+    inference = build_inference_prompt(record, tokenizer, **settings)
+    training = preprocess_record(
+        record,
+        tokenizer,
+        split="train",
+        tokenizer_name="Qwen/Qwen3-0.6B",
+        tokenizer_revision="c1899de289a04d12100db370d81485cdf75e47ca",
+        max_sequence_length=4000,
+        **settings,
+    )
+
+    prompt_length = training["metadata"]["prompt_tokens"]
+    inference_ids = tokenizer.encode(inference["prompt"], add_special_tokens=False)
+    assert inference_ids == training["input_ids"][:prompt_length]
+
+    longer_target = {**record, "program": "add(1, 2), " * 40 + "add(1, 2)"}
+    longer_training = preprocess_record(
+        longer_target,
+        tokenizer,
+        split="train",
+        tokenizer_name="Qwen/Qwen3-0.6B",
+        tokenizer_revision="c1899de289a04d12100db370d81485cdf75e47ca",
+        max_sequence_length=4000,
+        **settings,
+    )
+    assert (
+        longer_training["input_ids"][:prompt_length]
+        == training["input_ids"][:prompt_length]
+    )
+    assert (
+        longer_training["metadata"]["effective_evidence_budget"]
+        == training["metadata"]["effective_evidence_budget"]
+    )
+    assert inference["metadata"]["evidence_budget_reductions"] > 0
+    assert inference["metadata"]["prompt_tokens"] <= settings["max_prompt_tokens"]
 
 
 def test_supports_empty_passages():

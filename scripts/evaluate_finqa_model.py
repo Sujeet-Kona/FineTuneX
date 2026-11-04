@@ -100,6 +100,51 @@ def inference_only_record(record: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def validate_preprocessing_provenance() -> tuple[str, str, str]:
+    """Verify raw evaluation data is the exact source of the tokenized artifacts."""
+    manifest_path = PROJECT_ROOT / "artifacts/preprocessed/finqa/manifest.json"
+    preprocessed_validation_path = (
+        PROJECT_ROOT / "artifacts/preprocessed/finqa/validation.jsonl"
+    )
+
+    if not manifest_path.is_file():
+        raise FileNotFoundError(f"Preprocessing manifest not found: {manifest_path}")
+    if not preprocessed_validation_path.is_file():
+        raise FileNotFoundError(
+            f"Preprocessed validation artifact not found: "
+            f"{preprocessed_validation_path}"
+        )
+
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict) or manifest.get("schema_version") != 2:
+        raise ValueError("Unsupported or invalid preprocessing manifest")
+
+    source_validation_sha256 = sha256_file(VALIDATION_PATH)
+    preprocessed_validation_sha256 = sha256_file(preprocessed_validation_path)
+    manifest_source_sha256 = (
+        manifest.get("dataset", {}).get("source_split_sha256", {}).get("validation")
+    )
+    manifest_artifact_sha256 = (
+        manifest.get("splits", {}).get("validation", {}).get("output_sha256")
+    )
+
+    if manifest_source_sha256 != source_validation_sha256:
+        raise ValueError(
+            "Raw validation split does not match the source validation hash "
+            "recorded in the preprocessing manifest"
+        )
+    if manifest_artifact_sha256 != preprocessed_validation_sha256:
+        raise ValueError(
+            "Tokenized validation artifact does not match its preprocessing manifest"
+        )
+
+    return (
+        sha256_file(manifest_path),
+        source_validation_sha256,
+        preprocessed_validation_sha256,
+    )
+
+
 def evaluate_prediction(
     normalized_output: str,
     table: list[list[str]],
@@ -146,7 +191,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--checkpoint",
         type=Path,
-        default=Path("artifacts/checkpoints/v3-pilot-32"),
+        default=Path("artifacts/checkpoints/v4-pilot-32"),
         help="LoRA checkpoint directory.",
     )
     parser.add_argument(
@@ -163,14 +208,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("artifacts/evaluation/v3-adapter-32"),
+        default=Path("artifacts/evaluation/v4-adapter-32"),
         help="Directory for predictions and summary.",
     )
     parser.add_argument(
         "--max-new-tokens",
         type=int,
-        default=96,
-        help="Maximum generated tokens per example.",
+        default=128,
+        help="Maximum generated tokens per example (configured reserve: 128).",
     )
     parser.add_argument(
         "--evidence-budget",
@@ -224,6 +269,19 @@ def main() -> None:
 
     model_config = load_yaml_config(MODEL_CONFIG_PATH)
     training_config = load_yaml_config(TRAINING_CONFIG_PATH)
+    preprocessing_config = load_yaml_config(PREPROCESSING_CONFIG_PATH)["preprocessing"]
+    max_prompt_tokens = preprocessing_config["sequence"]["max_prompt_length"]
+    configured_max_new_tokens = preprocessing_config["generation"]["max_new_tokens"]
+
+    if args.max_new_tokens > configured_max_new_tokens:
+        raise ValueError(
+            f"--max-new-tokens cannot exceed configured generation reserve "
+            f"({configured_max_new_tokens})"
+        )
+
+    max_sequence_length = training_config["training"]["max_sequence_length"]
+    if max_prompt_tokens + args.max_new_tokens > max_sequence_length:
+        raise ValueError("Prompt budget and generation limit exceed sequence limit")
 
     evidence_budget = args.evidence_budget
 
@@ -235,8 +293,20 @@ def main() -> None:
     print("Validation examples:", len(records))
     print("Max new tokens:", args.max_new_tokens)
     print("Evidence budget:", evidence_budget)
+    print("Maximum prompt tokens:", max_prompt_tokens)
+    (
+        preprocessing_manifest_sha256,
+        source_validation_sha256,
+        preprocessed_validation_sha256,
+    ) = validate_preprocessing_provenance()
+
     print("Output directory:", output_dir)
-    print("Validation SHA-256:", sha256_file(VALIDATION_PATH))
+    print("Source validation SHA-256:", source_validation_sha256)
+    print(
+        "Preprocessed validation artifact SHA-256:",
+        preprocessed_validation_sha256,
+    )
+    print("Preprocessing manifest SHA-256:", preprocessing_manifest_sha256)
 
     if args.base_model:
         components = load_base_inference_components(model_config, training_config)
@@ -247,10 +317,6 @@ def main() -> None:
             checkpoint_path,
         )
 
-    preprocessing_manifest_path = (
-        PROJECT_ROOT / "artifacts/preprocessed/finqa/manifest.json"
-    )
-    preprocessing_manifest_sha256 = sha256_file(preprocessing_manifest_path)
     if (
         not args.base_model
         and components.checkpoint_metadata.get("preprocessing_manifest_sha256")
@@ -275,6 +341,7 @@ def main() -> None:
                     safe_record,
                     components.tokenizer,
                     evidence_budget=evidence_budget,
+                    max_prompt_tokens=max_prompt_tokens,
                 )
 
                 generation = generate_program(
@@ -356,6 +423,7 @@ def main() -> None:
                 "limited_run": total < 883,
                 "max_new_tokens": args.max_new_tokens,
                 "evidence_budget": evidence_budget,
+                "max_prompt_tokens": max_prompt_tokens,
                 "generation": "greedy",
                 "answer_reference": "exe_ans",
                 "answer_comparison": "exact_after_five_decimal_rounding",
@@ -378,7 +446,8 @@ def main() -> None:
             },
             "inputs": {
                 "validation_path": str(VALIDATION_PATH),
-                "validation_sha256": sha256_file(VALIDATION_PATH),
+                "validation_sha256": source_validation_sha256,
+                "preprocessed_validation_sha256": preprocessed_validation_sha256,
                 "model_config_sha256": sha256_file(MODEL_CONFIG_PATH),
                 "training_config_sha256": sha256_file(TRAINING_CONFIG_PATH),
                 "preprocessing_config_sha256": sha256_file(PREPROCESSING_CONFIG_PATH),

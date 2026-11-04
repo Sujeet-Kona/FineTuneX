@@ -1,5 +1,5 @@
 preprocessing:
-  prompt_version: finqa-program-v3-reasoning
+  prompt_version: finqa-program-v4-fixed-prompt-budget
 
   input:
     directory: data/processed/finqa
@@ -13,6 +13,10 @@ preprocessing:
 
   sequence:
     max_length: 1536
+    max_prompt_length: 1408
+
+  generation:
+    max_new_tokens: 128
 
   splits:
     - train

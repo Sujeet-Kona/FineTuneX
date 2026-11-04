@@ -96,17 +96,25 @@ out until model and evaluation decisions are frozen.
 
 ## Prompt contract and checkpoint compatibility
 
-The current prompt contract is `finqa-program-v3-reasoning`. It explicitly
-defines the supported FinQA operations, zero-based intermediate-result
-references, table aggregation syntax, operand order, percentage calculations,
-and unit/scale handling. Training and inference import the same prompt
-implementation to preserve prompt parity.
+The current prompt contract is `finqa-program-v4-fixed-prompt-budget`. It defines
+the supported FinQA operations, zero-based intermediate-result references,
+table aggregation syntax, operand order, percentage calculations, and
+unit/scale handling. Training and inference share one evidence-selection and
+prompt-rendering implementation.
+
+The prompt ceiling is 1,408 tokenizer tokens and the generation reserve is 128
+tokens within the 1,536-token sequence limit. Evidence is reduced using only
+the question, passages, table, and tokenizer. Gold program length never affects
+evidence selection. Preprocessing rejects a target that cannot fit in the
+reserved generation window rather than truncating it. Evaluation and the API
+load the same limits from `configs/preprocessing.yaml`.
 
 A checkpoint trained with an earlier prompt version is intentionally rejected
 by the current inference loader. After changing the prompt contract, regenerate
 the tokenized train/validation artifacts, train a new adapter, and evaluate
 that adapter against a base-model run produced with the same prompt version.
-Do not reuse the v2 pilot checkpoint as a v3 result.
+The v3 pilot checkpoint and its metrics are historical and must not be presented
+as v4 results.
 
 ## FastAPI inference
 
@@ -115,7 +123,7 @@ requests so concurrent clients do not issue simultaneous inference calls to
 the same local accelerator. Set the checkpoint path and start the server:
 
 ```bash
-export FINETUNEX_CHECKPOINT=artifacts/checkpoints/<v3-checkpoint-name>
+export FINETUNEX_CHECKPOINT=artifacts/checkpoints/<v4-checkpoint-name>
 uvicorn finetunex.api.app:app --host 127.0.0.1 --port 8000
 ```
 
@@ -178,27 +186,27 @@ are not already present in the mounted cache. The service listens on port
 - [x] FinQA preprocessing pipeline with train/validation provenance and test-split isolation.
 - [x] FinQA program parser and deterministic executor.
 - [x] Gold-program execution audit across all 8,281 examples.
-- [x] Versioned v3 reasoning prompt and shared inference prompt implementation.
-- [x] Controlled v3 base-model smoke evaluation on 32 validation examples.
-- [ ] Train a v3 LoRA adapter and run the same 32-example paired evaluation.
+- [x] Versioned v3 reasoning prompt and controlled 32-example pilot.
+- [x] Identified and reproduced the v3 training/inference evidence-budget mismatch.
+- [x] Implemented v4 target-independent prompt budgeting across preprocessing, evaluation, and API.
+- [ ] Regenerate v4 train/validation artifacts and verify exact prompt parity on all 883 validation examples.
+- [ ] Train a fresh v4 LoRA adapter and run paired base/adapter evaluation.
 - [ ] Run a full 883-example validation comparison before making model-quality claims.
 - [x] FastAPI inference implementation (real checkpoint-backed smoke test pending).
 - [x] CUDA Docker deployment definition (Linux NVIDIA build/runtime validation pending).
 - [ ] Confirm GitHub Actions CI on the final pull-request chain.
 
-### Current benchmark snapshot
+### Historical v3 pilot (superseded)
 
-The unadapted Qwen3-0.6B model was evaluated on the first 32 validation
-examples with the v3 prompt, greedy decoding, a 128-token generation limit,
-and a 1,024-token evidence budget:
+The earlier v3 32-example pilot produced these results:
 
-| Metric | Base model |
-| --- | ---: |
-| Parse success | 18/32 (56.25%) |
-| Execution success | 10/32 (31.25%) |
-| Exact answer accuracy | 0/32 (0%) |
+| Metric | Base model | LoRA pilot |
+| --- | ---: | ---: |
+| Parse success | 18/32 (56.25%) | 32/32 (100%) |
+| Execution success | 10/32 (31.25%) | 32/32 (100%) |
+| Exact answer accuracy | 0/32 (0%) | 2/32 (6.25%) |
 
-This is a small smoke benchmark, not a full validation result. It establishes
-the baseline for a paired adapter run; it does not establish that fine-tuning
-will improve accuracy. No fine-tuned model-quality claim is made until the
-adapter is evaluated on identical prompts and record order.
+The pilot showed improved program formatting and executability, but weak
+numerical reasoning. These measurements used the v3 prompt-budget policy and
+are not v4 results. The v4 pipeline must be re-preprocessed, retrained, and
+evaluated before any updated model-quality claim is made.
