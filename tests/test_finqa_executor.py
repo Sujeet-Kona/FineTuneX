@@ -71,9 +71,7 @@ def test_table_operations(operation, expected):
 
 def test_table_percentages_and_parenthetical_annotations():
     table = [["margin", "10% ( 10 % )", "20%", "30%"]]
-    assert execute_program(
-        "table_average(margin, none)", table
-    ) == 0.2
+    assert execute_program("table_average(margin, none)", table) == 0.2
 
 
 def test_table_currency_and_thousands_separators():
@@ -86,16 +84,12 @@ def test_duplicate_table_labels_use_last_matching_row():
         ["first quarter", "$ 62.42", "$ 54.10"],
         ["first quarter", "$ 38.02", "$ 34.19"],
     ]
-    assert execute_program(
-        "table_max(first quarter, none)", table
-    ) == 38.02
+    assert execute_program("table_max(first quarter, none)", table) == 38.02
 
 
 def test_table_operation_can_be_followed_by_arithmetic():
     table = [["revenue", "10", "20", "30"]]
-    assert execute_program(
-        "table_sum(revenue, none), divide(#0, 3)", table
-    ) == 20
+    assert execute_program("table_sum(revenue, none), divide(#0, 3)", table) == 20
 
 
 @pytest.mark.parametrize(
@@ -141,6 +135,7 @@ def test_rejects_non_finite_number():
 def test_rejects_non_sequence_table():
     with pytest.raises(FinQAExecutionError):
         execute_program("add(1, 2)", "not-a-table")
+
 
 def test_rejects_complex_exponentiation_result():
     with pytest.raises(FinQAExecutionError, match="complex result"):
