@@ -12,9 +12,10 @@ from finetunex.evaluation.finqa_executor import (
     parse_number,
 )
 from finetunex.evaluation.finqa_parser import parse_program
+from finetunex.evaluation.finqa_reference import reference_execute_program
 
 DATA_DIR = Path("data/processed/finqa")
-SPLITS = ("train", "validation", "test")
+SPLITS = ("train", "validation")
 ERROR_EXAMPLES = 20
 
 
@@ -39,6 +40,8 @@ def evaluate_split(split: str) -> dict[str, object]:
     matched = 0
     errors: list[dict[str, object]] = []
     mismatches: list[dict[str, object]] = []
+    reference_mismatches: list[dict[str, object]] = []
+    executor_disagreements: list[dict[str, object]] = []
     operation_counts: Counter[str] = Counter()
     gold_answer_types: Counter[str] = Counter()
 
@@ -69,6 +72,43 @@ def evaluate_split(split: str) -> dict[str, object]:
                 )
                 continue
 
+            try:
+                reference_predicted = reference_execute_program(
+                    program, record["table"]
+                )
+            except (ArithmeticError, TypeError, ValueError) as exc:
+                reference_mismatches.append(
+                    {
+                        "line": line_number,
+                        "id": record["id"],
+                        "program": program,
+                        "expected": expected,
+                        "error": str(exc),
+                    }
+                )
+            else:
+                if not answers_match(reference_predicted, expected):
+                    reference_mismatches.append(
+                        {
+                            "line": line_number,
+                            "id": record["id"],
+                            "program": program,
+                            "reference_predicted": reference_predicted,
+                            "expected": expected,
+                        }
+                    )
+                if reference_predicted != predicted:
+                    executor_disagreements.append(
+                        {
+                            "line": line_number,
+                            "id": record["id"],
+                            "program": program,
+                            "custom_predicted": predicted,
+                            "reference_predicted": reference_predicted,
+                            "expected": expected,
+                        }
+                    )
+
             if answers_match(predicted, expected):
                 matched += 1
             else:
@@ -90,6 +130,8 @@ def evaluate_split(split: str) -> dict[str, object]:
         "matched": matched,
         "errors": errors,
         "mismatches": mismatches,
+        "reference_mismatches": reference_mismatches,
+        "executor_disagreements": executor_disagreements,
         "operation_counts": operation_counts,
         "gold_answer_types": gold_answer_types,
     }
@@ -143,6 +185,14 @@ def main() -> None:
     print(f"  Execution errors:     {len(all_errors)}")
     print(f"  Exact answer matches: {total_matched}")
     print(f"  Answer mismatches:    {len(all_mismatches)}")
+    reference_mismatch_count = sum(
+        len(result["reference_mismatches"]) for result in results
+    )
+    print("  Reference mismatches:", reference_mismatch_count)
+    executor_disagreement_count = sum(
+        len(result["executor_disagreements"]) for result in results
+    )
+    print("  Executor differences:", executor_disagreement_count)
     print(f"  Execution success:    {total_successful / total_examples:.4%}")
     print(f"  Execution accuracy:   {total_matched / total_examples:.4%}")
 
@@ -168,6 +218,8 @@ def main() -> None:
         "execution_errors": len(all_errors),
         "exact_matches": total_matched,
         "answer_mismatches": len(all_mismatches),
+        "reference_answer_mismatches": reference_mismatch_count,
+        "custom_reference_disagreements": executor_disagreement_count,
         "execution_success_rate": (
             total_successful / total_examples if total_examples else 0
         ),
@@ -180,11 +232,19 @@ def main() -> None:
                 "exact_matches": result["matched"],
                 "execution_errors": len(result["errors"]),
                 "answer_mismatches": len(result["mismatches"]),
+                "reference_answer_mismatches": len(result["reference_mismatches"]),
+                "custom_reference_disagreements": len(result["executor_disagreements"]),
             }
             for result in results
         ],
         "errors": all_errors,
         "mismatches": all_mismatches,
+        "reference_mismatches": [
+            item for result in results for item in result["reference_mismatches"]
+        ],
+        "executor_disagreements": [
+            item for result in results for item in result["executor_disagreements"]
+        ],
     }
 
     report_path = Path("experiments/finqa_gold_execution_report.json")

@@ -12,6 +12,8 @@ def make_summary(source):
         },
         "scope": {
             "examples_evaluated": 2,
+            "sample_method": "complete_official_order",
+            "sample_seed": None,
             "max_new_tokens": 128,
             "max_prompt_tokens": 1408,
             "evidence_budget": 1024,
@@ -49,7 +51,6 @@ def make_rows():
         },
     ]
 
-
 def test_compares_only_identical_prompted_examples():
     result = compare(
         make_summary("base_model"),
@@ -61,7 +62,6 @@ def test_compares_only_identical_prompted_examples():
     assert result["identical_prompts_and_record_order"] is True
     assert result["examples"] == 2
     assert result["adapter_minus_base"]["answer_accuracy"] == 0.25
-
 
 def test_rejects_prompt_mismatch():
     adapter_rows = make_rows()
@@ -75,7 +75,6 @@ def test_rejects_prompt_mismatch():
             adapter_rows,
         )
 
-
 def test_rejects_record_order_mismatch():
     adapter_rows = list(reversed(make_rows()))
 
@@ -86,7 +85,6 @@ def test_rejects_record_order_mismatch():
             make_summary("lora_adapter"),
             adapter_rows,
         )
-
 
 def test_rejects_validation_provenance_mismatch():
     adapter_summary = make_summary("lora_adapter")
@@ -100,7 +98,6 @@ def test_rejects_validation_provenance_mismatch():
             make_rows(),
         )
 
-
 def test_rejects_preprocessed_validation_artifact_mismatch():
     adapter_summary = make_summary("lora_adapter")
     adapter_summary["inputs"]["preprocessed_validation_sha256"] = "different"
@@ -113,12 +110,24 @@ def test_rejects_preprocessed_validation_artifact_mismatch():
             make_rows(),
         )
 
-
 def test_rejects_prompt_budget_mismatch():
     adapter_summary = make_summary("lora_adapter")
     adapter_summary["scope"]["max_prompt_tokens"] = 1200
 
     with pytest.raises(ValueError, match="Scope mismatch: max_prompt_tokens"):
+        compare(
+            make_summary("base_model"),
+            make_rows(),
+            adapter_summary,
+            make_rows(),
+        )
+
+def test_rejects_validation_sample_seed_mismatch():
+    adapter_summary = make_summary("lora_adapter")
+    adapter_summary["scope"]["sample_method"] = "sha256_record_id"
+    adapter_summary["scope"]["sample_seed"] = 7
+
+    with pytest.raises(ValueError, match="Scope mismatch: sample_method"):
         compare(
             make_summary("base_model"),
             make_rows(),

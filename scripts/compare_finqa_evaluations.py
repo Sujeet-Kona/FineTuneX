@@ -44,6 +44,8 @@ def compare(
 
     for key in (
         "examples_evaluated",
+        "sample_method",
+        "sample_seed",
         "max_new_tokens",
         "max_prompt_tokens",
         "evidence_budget",
@@ -110,17 +112,17 @@ def main() -> None:
     parser.add_argument(
         "--base-dir",
         type=Path,
-        default=Path("artifacts/evaluation/v4-base-32"),
+        default=Path("artifacts/evaluation/v4-base-full"),
     )
     parser.add_argument(
         "--adapter-dir",
         type=Path,
-        default=Path("artifacts/evaluation/v4-adapter-32"),
+        default=Path("artifacts/evaluation/v4-adapter-full"),
     )
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("artifacts/evaluation/v4-paired-comparison.json"),
+        default=Path("artifacts/evaluation/v4-paired-full-comparison.json"),
     )
     args = parser.parse_args()
 

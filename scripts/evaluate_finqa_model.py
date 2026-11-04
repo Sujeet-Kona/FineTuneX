@@ -54,21 +54,33 @@ def sha256_file(path: Path) -> str:
     return digest.hexdigest()
 
 
-def load_validation_records(limit: int) -> list[dict[str, Any]]:
-    records: list[dict[str, Any]] = []
+def load_validation_records(
+    limit: int | None = None,
+    *,
+    sample_seed: int = 42,
+) -> list[dict[str, Any]]:
+    """Load the complete split or a deterministic, ID-hash sample."""
+    if limit is not None and (
+        isinstance(limit, bool) or not isinstance(limit, int) or limit <= 0
+    ):
+        raise ValueError("limit must be a positive integer or None")
+    if (
+        isinstance(sample_seed, bool)
+        or not isinstance(sample_seed, int)
+        or sample_seed < 0
+    ):
+        raise ValueError("sample_seed must be a non-negative integer")
 
+    records: list[dict[str, Any]] = []
     with VALIDATION_PATH.open(encoding="utf-8") as file:
         for line_number, line in enumerate(file, start=1):
             if not line.strip():
                 raise ValueError(f"Blank validation record at line {line_number}")
-
             record = json.loads(line)
-
             if not isinstance(record, dict):
                 raise ValueError(
                     f"Validation line {line_number} must contain an object"
                 )
-
             required = (
                 "id",
                 "question",
@@ -78,19 +90,22 @@ def load_validation_records(limit: int) -> list[dict[str, Any]]:
                 "exe_ans",
             )
             missing = [key for key in required if key not in record]
-
             if missing:
                 raise ValueError(f"Validation line {line_number} is missing {missing}")
-
             records.append(record)
-
-            if len(records) >= limit:
-                break
 
     if not records:
         raise ValueError("No validation records were loaded")
+    if limit is None or limit >= len(records):
+        return records
 
-    return records
+    ranked_indices = sorted(
+        range(len(records)),
+        key=lambda index: hashlib.sha256(
+            f"{sample_seed}:{records[index]['id']}".encode()
+        ).hexdigest(),
+    )[:limit]
+    return [records[index] for index in sorted(ranked_indices)]
 
 
 def inference_only_record(record: dict[str, Any]) -> dict[str, Any]:
@@ -191,8 +206,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--checkpoint",
         type=Path,
-        default=Path("artifacts/checkpoints/v4-pilot-32"),
-        help="LoRA checkpoint directory.",
+        default=None,
+        help="LoRA checkpoint directory (required unless --base-model is set).",
     )
     parser.add_argument(
         "--base-model",
@@ -202,14 +217,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--limit",
         type=int,
-        default=10,
-        help="Maximum validation examples to evaluate (default: 10).",
+        default=None,
+        help=(
+            "Optional deterministic validation sample size; "
+            "default evaluates all records."
+        ),
+    )
+    parser.add_argument(
+        "--sample-seed",
+        type=int,
+        default=42,
+        help="Seed for reproducible ID-hash sampling when --limit is set.",
     )
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("artifacts/evaluation/v4-adapter-32"),
-        help="Directory for predictions and summary.",
+        default=None,
+        help="Output directory (defaults to a full-validation run directory).",
     )
     parser.add_argument(
         "--max-new-tokens",
@@ -231,8 +255,10 @@ def parse_args() -> argparse.Namespace:
 
     args = parser.parse_args()
 
-    if args.limit <= 0:
+    if args.limit is not None and args.limit <= 0:
         parser.error("--limit must be positive")
+    if args.sample_seed < 0:
+        parser.error("--sample-seed must be non-negative")
 
     if args.max_new_tokens <= 0:
         parser.error("--max-new-tokens must be positive")
@@ -246,11 +272,20 @@ def parse_args() -> argparse.Namespace:
 def main() -> None:
     args = parse_args()
 
-    checkpoint_path = args.checkpoint.expanduser()
-    if not checkpoint_path.is_absolute():
-        checkpoint_path = PROJECT_ROOT / checkpoint_path
+    checkpoint_path = None
+    if not args.base_model:
+        if args.checkpoint is None:
+            raise ValueError("--checkpoint is required for adapter evaluation")
+        checkpoint_path = args.checkpoint.expanduser()
+        if not checkpoint_path.is_absolute():
+            checkpoint_path = PROJECT_ROOT / checkpoint_path
 
-    output_dir = args.output_dir.expanduser()
+    output_dir = args.output_dir or Path(
+        "artifacts/evaluation/v4-base-full"
+        if args.base_model
+        else "artifacts/evaluation/v4-adapter-full"
+    )
+    output_dir = output_dir.expanduser()
     if not output_dir.is_absolute():
         output_dir = PROJECT_ROOT / output_dir
 
@@ -265,7 +300,7 @@ def main() -> None:
             "Choose another --output-dir or pass --overwrite."
         )
 
-    records = load_validation_records(args.limit)
+    records = load_validation_records(args.limit, sample_seed=args.sample_seed)
 
     model_config = load_yaml_config(MODEL_CONFIG_PATH)
     training_config = load_yaml_config(TRAINING_CONFIG_PATH)
@@ -421,6 +456,12 @@ def main() -> None:
                 "examples_evaluated": total,
                 "full_validation_examples": 883,
                 "limited_run": total < 883,
+                "sample_method": (
+                    "sha256_record_id"
+                    if args.limit is not None
+                    else "complete_official_order"
+                ),
+                "sample_seed": args.sample_seed if args.limit is not None else None,
                 "max_new_tokens": args.max_new_tokens,
                 "evidence_budget": evidence_budget,
                 "max_prompt_tokens": max_prompt_tokens,

@@ -404,6 +404,13 @@ def main() -> int:
     config_hashes = {path.name: sha256_file(path) for path in config_paths}
 
     print("\n===== TRAINING PLAN =====")
+    print(
+        "Run mode:",
+        "LIMITED SMOKE RUN"
+        if args.max_train_batches is not None or args.max_validation_batches is not None
+        else "FULL DATASET RUN",
+    )
+    print("Checkpoint selection: lowest token-weighted validation loss")
     print("Epochs:", epochs)
     print("Batch size:", batch_size)
     print("Gradient accumulation:", accumulation_steps)
@@ -471,6 +478,13 @@ def main() -> int:
         print("Gradient norm:", train_metrics.mean_gradient_norm)
 
         metadata = {
+            "run_type": (
+                "limited_smoke"
+                if args.max_train_batches is not None
+                or args.max_validation_batches is not None
+                else "full_dataset"
+            ),
+            "checkpoint_selection_metric": "token_weighted_validation_loss",
             "model": model_settings["name"],
             "model_revision": model_settings["revision"],
             "tokenizer": model_settings["tokenizer"]["name"],

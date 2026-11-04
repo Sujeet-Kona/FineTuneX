@@ -5,6 +5,7 @@ import pytest
 from finetunex.data.finqa_preprocessing import (
     PROMPT_VERSION,
     SYSTEM_INSTRUCTION,
+    build_prompt,
     preprocess_record,
 )
 
@@ -31,7 +32,9 @@ class FakeTokenizer:
         )
 
         if add_generation_prompt:
-            rendered += "<|im_start|>assistant\n<think>\n\n</think>\n\n"
+            rendered += "<|im_start|>assistant\n"
+            if enable_thinking:
+                rendered += "<think>\n"
 
         return rendered
 
@@ -79,7 +82,6 @@ def preprocess(record=None, **kwargs):
         **kwargs,
     )
 
-
 def test_prompt_contract_defines_operations_and_reasoning_constraints():
     assert PROMPT_VERSION == "finqa-program-v4-fixed-prompt-budget"
     assert "subtract(a, b) computes a minus b" in SYSTEM_INSTRUCTION
@@ -89,7 +91,6 @@ def test_prompt_contract_defines_operations_and_reasoning_constraints():
     assert "do not subtract the count" in SYSTEM_INSTRUCTION
     assert "preserve" in SYSTEM_INSTRUCTION and "units" in SYSTEM_INSTRUCTION
     assert "Output the program only." in SYSTEM_INSTRUCTION
-
 
 def test_builds_tokenized_example_with_target_only_labels():
     result = preprocess()
@@ -107,7 +108,6 @@ def test_builds_tokenized_example_with_target_only_labels():
     assert labels[-1] == FakeTokenizer.eos_token_id
     assert input_ids[-1] == FakeTokenizer.eos_token_id
 
-
 def test_records_reproducibility_metadata():
     metadata = preprocess()["metadata"]
 
@@ -119,13 +119,11 @@ def test_records_reproducibility_metadata():
     assert metadata["evidence_budget"] == 1024
     assert metadata["sequence_length"] > 0
 
-
 def test_complete_table_is_preserved_when_it_fits():
     metadata = preprocess()["metadata"]
 
     assert metadata["table_strategy"] == "complete"
     assert metadata["selected_table_row_indices"] == [1, 2]
-
 
 def test_reduces_evidence_budget_to_fit_sequence_without_truncation():
     record = make_record()
@@ -156,7 +154,6 @@ def test_reduces_evidence_budget_to_fit_sequence_without_truncation():
     assert metadata["evidence_tokens"] <= metadata["effective_evidence_budget"]
     assert metadata["sequence_length"] <= max_sequence_length
 
-
 def test_oversized_table_uses_header_grounded_row_fallback():
     record = make_record()
     record["table"] = [
@@ -175,7 +172,6 @@ def test_oversized_table_uses_header_grounded_row_fallback():
     assert metadata["evidence_tokens"] <= 10
     assert all(index > 0 for index in metadata["selected_table_row_indices"])
 
-
 def test_empty_passages_are_supported():
     record = make_record()
     record["pre_text"] = []
@@ -186,7 +182,6 @@ def test_empty_passages_are_supported():
     assert result["metadata"]["selected_passage_indices"] == []
     assert len(result["input_ids"]) == len(result["labels"])
 
-
 def test_gold_annotations_are_not_returned():
     result = preprocess()
 
@@ -194,7 +189,6 @@ def test_gold_annotations_are_not_returned():
     assert "ann_text_rows" not in result
     assert "ann_table_rows" not in result
     assert "gold_inds" not in result["metadata"]
-
 
 def test_does_not_mutate_source_record():
     record = make_record()
@@ -204,14 +198,12 @@ def test_does_not_mutate_source_record():
 
     assert record == original
 
-
 def test_rejects_sequence_over_maximum_without_truncation():
     record = make_record()
     record["program"] = "x" * 1000
 
     with pytest.raises(ValueError, match="generation reserve"):
         preprocess(record, max_sequence_length=1536, max_prompt_tokens=1408)
-
 
 def test_rejects_unsupported_split():
     with pytest.raises(ValueError, match="split"):
@@ -223,14 +215,12 @@ def test_rejects_unsupported_split():
             tokenizer_revision="pinned-revision",
         )
 
-
 def test_rejects_missing_program():
     record = make_record()
     del record["program"]
 
     with pytest.raises(ValueError, match="program"):
         preprocess(record)
-
 
 def test_rejects_empty_program():
     record = make_record()
@@ -239,7 +229,16 @@ def test_rejects_empty_program():
     with pytest.raises(ValueError, match="program"):
         preprocess(record)
 
-
 def test_rejects_invalid_evidence_budget():
     with pytest.raises(ValueError, match="evidence_budget"):
         preprocess(evidence_budget=0)
+
+def test_generation_prompt_respects_disabled_thinking_flag():
+    prompt = build_prompt(
+        "What was revenue?",
+        [],
+        "Year | Revenue\\n2023 | 125",
+        FakeTokenizer(),
+    )
+    assert "<think>" not in prompt
+    assert prompt.endswith("<|im_start|>assistant\\n")
