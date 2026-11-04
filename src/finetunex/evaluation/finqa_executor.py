@@ -39,14 +39,10 @@ def parse_number(value: str) -> float:
     try:
         number = float(normalized)
     except ValueError as exc:
-        raise FinQAExecutionError(
-            f"Invalid numeric value: {value!r}."
-        ) from exc
+        raise FinQAExecutionError(f"Invalid numeric value: {value!r}.") from exc
 
     if not math.isfinite(number):
-        raise FinQAExecutionError(
-            f"Non-finite numeric value: {value!r}."
-        )
+        raise FinQAExecutionError(f"Non-finite numeric value: {value!r}.")
 
     if is_percentage:
         number /= 100.0
@@ -71,23 +67,17 @@ def _resolve_argument(
             )
 
         if reference_index >= len(results):
-            raise FinQAExecutionError(
-                f"Reference #{reference_index} does not exist."
-            )
+            raise FinQAExecutionError(f"Reference #{reference_index} does not exist.")
 
         result = results[reference_index]
 
         if isinstance(result, str):
-            raise FinQAExecutionError(
-                f"Reference #{reference_index} is not numeric."
-            )
+            raise FinQAExecutionError(f"Reference #{reference_index} is not numeric.")
 
         return result
 
     if "#" in argument:
-        raise FinQAExecutionError(
-            f"Malformed result reference: {argument!r}."
-        )
+        raise FinQAExecutionError(f"Malformed result reference: {argument!r}.")
 
     return parse_number(argument)
 
@@ -103,9 +93,7 @@ def _parse_table_row(row: Sequence[object]) -> list[float]:
 
     for cell in row[1:]:
         if not isinstance(cell, str):
-            raise FinQAExecutionError(
-                f"Table cell must be a string: {cell!r}."
-            )
+            raise FinQAExecutionError(f"Table cell must be a string: {cell!r}.")
 
         cleaned = cell.replace("$", "").strip()
         cleaned = cleaned.split("(", maxsplit=1)[0].strip()
@@ -139,9 +127,7 @@ def _execute_step(
                 selected_row = row
 
         if selected_row is None:
-            raise FinQAExecutionError(
-                f"Table row not found: {step.arg1!r}."
-            )
+            raise FinQAExecutionError(f"Table row not found: {step.arg1!r}.")
 
         values = _parse_table_row(selected_row)
 
@@ -154,9 +140,7 @@ def _execute_step(
         if operation == "table_average":
             return sum(values) / len(values)
 
-        raise FinQAExecutionError(
-            f"Unsupported table operation: {operation!r}."
-        )
+        raise FinQAExecutionError(f"Unsupported table operation: {operation!r}.")
 
     left = _resolve_argument(step.arg1, results, step_index)
     right = _resolve_argument(step.arg2, results, step_index)
@@ -180,17 +164,13 @@ def _execute_step(
             ) from exc
 
         if isinstance(result, complex):
-            raise FinQAExecutionError(
-                "Exponentiation produced a complex result."
-            )
+            raise FinQAExecutionError("Exponentiation produced a complex result.")
 
         return result
     if operation == "greater":
         return "yes" if left > right else "no"
 
-    raise FinQAExecutionError(
-        f"Unsupported operation: {operation!r}."
-    )
+    raise FinQAExecutionError(f"Unsupported operation: {operation!r}.")
 
 
 def execute_program(
