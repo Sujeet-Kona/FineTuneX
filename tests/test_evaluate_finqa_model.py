@@ -43,6 +43,7 @@ def test_inference_record_excludes_gold_fields():
     assert "exe_ans" not in result
     assert "gold_inds" not in result
 
+
 def test_correct_generated_program():
     result = evaluate_prediction(
         "add(100, 27.4)",
@@ -55,6 +56,7 @@ def test_correct_generated_program():
     assert result["predicted_answer"] == 127.4
     assert result["answer_match"] is True
 
+
 def test_valid_program_with_wrong_answer():
     result = evaluate_prediction(
         "add(100, 20)",
@@ -65,6 +67,7 @@ def test_valid_program_with_wrong_answer():
     assert result["parse_status"] == "success"
     assert result["execution_status"] == "success"
     assert result["answer_match"] is False
+
 
 def test_malformed_program_is_parse_failure():
     result = evaluate_prediction(
@@ -78,6 +81,7 @@ def test_malformed_program_is_parse_failure():
     assert result["answer_match"] is False
     assert result["parse_error"]
 
+
 def test_execution_error_is_not_a_parse_error():
     result = evaluate_prediction(
         "divide(10, 0)",
@@ -90,6 +94,7 @@ def test_execution_error_is_not_a_parse_error():
     assert result["answer_match"] is False
     assert result["execution_error"]
 
+
 def test_table_program_executes_against_source_table():
     result = evaluate_prediction(
         "table_sum(Revenue, none)",
@@ -100,6 +105,7 @@ def test_table_program_executes_against_source_table():
     assert result["execution_status"] == "success"
     assert result["predicted_answer"] == 300
     assert result["answer_match"] is True
+
 
 def test_validation_provenance_accepts_matching_source_and_artifact(
     tmp_path, monkeypatch
@@ -133,6 +139,7 @@ def test_validation_provenance_accepts_matching_source_and_artifact(
     assert actual_source_hash == source_hash
     assert actual_artifact_hash == artifact_hash
 
+
 def test_validation_provenance_rejects_wrong_source_hash(tmp_path, monkeypatch):
     processed_dir = tmp_path / "artifacts" / "preprocessed" / "finqa"
     processed_dir.mkdir(parents=True)
@@ -159,6 +166,7 @@ def test_validation_provenance_rejects_wrong_source_hash(tmp_path, monkeypatch):
     with pytest.raises(ValueError, match="Raw validation split"):
         validate_preprocessing_provenance()
 
+
 def test_validation_loader_defaults_to_the_complete_file(tmp_path, monkeypatch):
     path = tmp_path / "validation.jsonl"
     records = [
@@ -180,6 +188,7 @@ def test_validation_loader_defaults_to_the_complete_file(tmp_path, monkeypatch):
 
     assert len(load_validation_records()) == 3
     assert len(load_validation_records(1)) == 1
+
 
 def test_validation_sampling_is_reproducible_and_id_based(tmp_path, monkeypatch):
     path = tmp_path / "validation.jsonl"
@@ -207,7 +216,6 @@ def test_validation_sampling_is_reproducible_and_id_based(tmp_path, monkeypatch)
     assert [row["id"] for row in first] == [row["id"] for row in second]
     assert len({row["id"] for row in first}) == 4
     assert [row["id"] for row in first] != [row["id"] for row in other_seed]
-
 
 
 def test_validation_loader_rejects_duplicate_record_ids(tmp_path, monkeypatch):
