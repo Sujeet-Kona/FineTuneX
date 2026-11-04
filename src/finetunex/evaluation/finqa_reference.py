@@ -6,8 +6,8 @@ FinQA's public code/evaluate/evaluate.py. It cross-checks gold programs only.
 
 from __future__ import annotations
 
-import math
 from collections.abc import Sequence
+import math
 
 from finetunex.evaluation.finqa_parser import parse_program
 
