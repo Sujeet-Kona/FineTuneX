@@ -311,3 +311,94 @@ def test_rejects_empty_prompt():
 
     with pytest.raises(ValueError, match="prompt"):
         generate_program(components, "   ")
+
+
+def test_loads_unadapted_base_model_with_pinned_local_revision(monkeypatch):
+    from types import SimpleNamespace
+
+    import finetunex.inference.generator as generator
+
+    calls = {}
+
+    class Tokenizer:
+        padding_side = None
+        pad_token_id = 0
+        eos_token_id = 2
+        eos_token = "</s>"
+        pad_token = None
+
+    class Model:
+        def __init__(self):
+            self.config = SimpleNamespace(use_cache=False)
+            self.moved_to = None
+            self.eval_called = False
+
+        def gradient_checkpointing_disable(self):
+            pass
+
+        def to(self, device):
+            self.moved_to = device
+            return self
+
+        def eval(self):
+            self.eval_called = True
+            return self
+
+        def named_parameters(self):
+            return []
+
+    tokenizer = Tokenizer()
+    model = Model()
+
+    def load_tokenizer(name, **kwargs):
+        calls["tokenizer"] = (name, kwargs)
+        return tokenizer
+
+    def load_model(name, **kwargs):
+        calls["model"] = (name, kwargs)
+        return model
+
+    monkeypatch.setattr(generator, "_select_inference_device", lambda: torch.device("cpu"))
+    monkeypatch.setattr(
+        generator.AutoTokenizer, "from_pretrained", load_tokenizer
+    )
+    monkeypatch.setattr(
+        generator.AutoModelForCausalLM, "from_pretrained", load_model
+    )
+
+    model_config, training_config = make_configs()
+    components = generator.load_base_inference_components(
+        model_config, training_config
+    )
+
+    assert components.model is model
+    assert components.tokenizer is tokenizer
+    assert components.checkpoint_metadata["model_revision"] == REVISION
+    assert components.checkpoint_metadata["training_config"]["max_sequence_length"] == 1536
+    assert calls["tokenizer"][1]["revision"] == REVISION
+    assert calls["tokenizer"][1]["local_files_only"] is True
+    assert calls["model"][1]["revision"] == REVISION
+    assert calls["model"][1]["local_files_only"] is True
+    assert model.config.use_cache is True
+    assert model.eval_called is True
+
+
+def test_base_loader_rejects_unpinned_model_revision():
+    from finetunex.inference.generator import load_base_inference_components
+
+    model_config, training_config = make_configs()
+    model_config["model"]["revision"] = ""
+    model_config["model"]["tokenizer"]["revision"] = ""
+
+    with pytest.raises(ValueError, match="revision must be pinned"):
+        load_base_inference_components(model_config, training_config)
+
+
+def test_base_loader_rejects_invalid_sequence_limit():
+    from finetunex.inference.generator import load_base_inference_components
+
+    model_config, training_config = make_configs()
+    training_config["training"]["max_sequence_length"] = 0
+
+    with pytest.raises(ValueError, match="max_sequence_length"):
+        load_base_inference_components(model_config, training_config)
