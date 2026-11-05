@@ -252,7 +252,7 @@ def parse_args() -> argparse.Namespace:
         "--evidence-budget",
         type=int,
         default=None,
-        help="Maximum evidence tokens supplied to the prompt (defaults to preprocessing config).",
+        help="Evidence token budget (defaults to preprocessing config).",
     )
     parser.add_argument(
         "--overwrite",
