@@ -201,6 +201,11 @@ def validate_manifest(
     if preprocessing_metadata.get("test_split_included") is not False:
         raise ValueError("Training artifacts must exclude the test split")
 
+    if preprocessing_metadata.get("evidence_budget") != preprocessing.get(
+        "evidence", {}
+    ).get("token_budget"):
+        raise ValueError("Training and preprocessing evidence budgets differ")
+
     if (
         preprocessing_metadata.get("max_sequence_length")
         != training["max_sequence_length"]
