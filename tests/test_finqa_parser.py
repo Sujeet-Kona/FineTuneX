@@ -81,6 +81,4 @@ def test_reject_non_string_input():
 
 
 def test_parse_numeric_argument_with_thousands_separator():
-    assert parse_program("add(1,000, 25)") == (
-        ProgramStep("add", "1,000", "25"),
-    )
+    assert parse_program("add(1,000, 25)") == (ProgramStep("add", "1,000", "25"),)
