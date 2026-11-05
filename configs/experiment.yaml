@@ -1,0 +1,11 @@
+experiment:
+  tracking:
+    enabled: false
+    backend: mlflow
+    tracking_uri: mlruns
+    experiment_name: finetunex-finqa
+    log_system_metrics: false
+  artifacts:
+    log_configurations: true
+    log_training_history: true
+    log_checkpoint_metadata: true
