@@ -4,7 +4,7 @@
 **Repository:** https://github.com/Sujeet-Kona/FineTuneX  
 **Branch:** `fix/finqa-experiment-integrity` (PR #6, stacked on PR #5)
 
-This report distinguishes source changes from executed validation. No local Mac dataset audit, model inference, or MPS training has been run by this inspection.
+This report distinguishes source changes from executed validation. The user has run the local annotation audit and validation commands; no base-model inference or MPS training has been run.
 
 ## Executive status
 
@@ -69,7 +69,7 @@ The vendored execution oracle is based on `czyssrs/FinQA/code/evaluate/evaluate.
 - Official executor differential: all 8,281 examples across train (6,251), validation (883), and test (1,147) matched the vendored official evaluator; zero differences.
 - Full annotation audit generated locally: 8,281 examples; 6,559 internally consistent; 1,722 require manual review. Flag counts: 640 `exe_ans` disagreements, 479 cases where the human answer agrees despite an `exe_ans` disagreement, 893 human-answer/program disagreements, 626 confirmed step mismatches, 345 ambiguous step annotations, and zero unexecutable programs or `program_re` structural failures.
 - Representative samples confirm the percentage fix for IPG and LLY while preserving the genuine ANSS program/answer mismatch. The former precision/format label has been replaced with the evidence-limited diagnostic name `exe_ans_disagreement_human_answer_consistent`; all 479 records remain manual-review cases.
-- The full sample export and broader manual review are not yet complete. The full audit has not been frozen.
+- The full sample export and broader manual review are not yet complete. A deterministic exporter has now been added; it verifies each source split's SHA-256 against the audit report and joins original source records to audit results. Its local execution and tests are pending. The full audit has not been frozen.
 - No source data has been edited.
 
 There are 23 test files in the current repository tree. CI tests are synthetic/offline tests; they do not establish correctness on the pinned downloaded dataset or MPS hardware.
@@ -77,7 +77,7 @@ There are 23 test files in the current repository tree. CI tests are synthetic/o
 ## Remaining blockers
 
 - Finish representative manual review: inspect at least 20 real records with raw program, raw `program_re`, raw steps, parsed steps, and computed values.
-- Export at least 10 real examples per annotation category (or all if fewer) under `docs/audit_samples/`.
+- Run `scripts/export_finqa_audit_samples.py` to export at least 10 real examples per annotation category (or all if fewer) under `docs/audit_samples/`; inspect the manifest and sample files.
 - Finalize `docs/DATA_POLICY.md` with the complete per-split counts and audit artifact provenance; current automatic exclusions remain zero.
 - Verify raw-to-processed preservation, shared prompt byte equality, target/EOS masking, Qwen3 thinking/template behavior, and token-length percentiles.
 - Validate the scorer with gold, corrupted, and garbage programs; manually inspect at least 20 base-model generations.
@@ -86,6 +86,6 @@ There are 23 test files in the current repository tree. CI tests are synthetic/o
 
 ## Current policy
 
-`docs/DATA_POLICY.md` defines all-record inclusion by default, no silent exclusions, official split use, and overall plus clean-subset reporting. Clean-subset counts are **MISSING** until the local audit runs.
+`docs/DATA_POLICY.md` defines all-record inclusion by default, no silent exclusions, official split use, and overall plus clean-subset reporting. Clean-subset counts are **MISSING** until records have been manually adjudicated and the clean-subset calculation is implemented.
 
 **No model-quality claim is supported yet.** Historical v3 pilot numbers in the README are not current v4 results.
