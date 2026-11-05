@@ -500,11 +500,14 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
             if not answer_match:
                 result["flags"].append("program_human_answer_disagreement")
 
+        # This is a diagnostic intersection, not proof of rounding/formatting:
+        # the computed program result disagrees with exe_ans while matching the
+        # parseable human answer. Keep the record in manual review.
         if (
             result.get("exe_ans_match") is False
             and result.get("human_answer_match") is True
         ):
-            result["flags"].append("likely_exe_ans_precision_or_format_issue")
+            result["flags"].append("exe_ans_disagreement_human_answer_consistent")
 
     result["classification"] = (
         "requires_manual_review" if result["flags"] else "internally_consistent"
@@ -548,8 +551,8 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
         "exe_ans_disagreements": sum(
             "program_exe_ans_disagreement" in item["flags"] for item in all_results
         ),
-        "likely_exe_ans_precision_or_format_issues": sum(
-            "likely_exe_ans_precision_or_format_issue" in item["flags"]
+        "exe_ans_disagreement_human_answer_consistents": sum(
+            "exe_ans_disagreement_human_answer_consistent" in item["flags"]
             for item in all_results
         ),
         "human_answer_program_disagreements": sum(
