@@ -23,7 +23,8 @@ python -m pip install -e ".[ml,api,dev]"
 
 The `ml` extra installs PyTorch, Transformers, PEFT, Accelerate and
 Safetensors. The `api` extra installs FastAPI and Uvicorn. The `dev` extra
-installs the test and lint tools.
+installs the test and lint tools. Optional MLflow tracking is installed with
+`python -m pip install -e ".[tracking]"` and is disabled by default.
 
 FineTuneX loads its pinned model and tokenizer from the local Hugging Face
 cache during training and inference. Dataset preparation may require network
@@ -44,6 +45,8 @@ workflow.
 8. Adapter packaging and provenance.
 9. FastAPI inference.
 10. Docker and automated testing.
+11. Optional MLflow tracking of run parameters, epoch metrics, configuration files, and selected checkpoint artifacts.
+12. Prometheus request-count and latency metrics for the FastAPI service.
 
 ## Controlled Base-Model Benchmark
 
@@ -174,6 +177,7 @@ The API does not download model weights at startup. It exposes:
 - `GET /health/live` — process liveness.
 - `GET /health/ready` — model readiness.
 - `POST /v1/finqa/score` — generate a FinQA program and execute it against the supplied table.
+- `GET /metrics` — Prometheus exposition for request counts and latency, labeled only by HTTP method, route template, and status code.
 
 Example request:
 
@@ -186,6 +190,8 @@ curl -X POST http://127.0.0.1:8000/v1/finqa/score \\
     "table": [["Year", "Revenue"], ["2022", "100"], ["2023", "125"]]
   }'
 ```
+
+The `/metrics` endpoint excludes itself from request metrics and never labels by request ID, question, table contents, or other user-provided values.
 
 The request schema rejects gold answer/program fields. A syntactically invalid
 model output is reported as a parse failure; it is not silently converted into
