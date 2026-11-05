@@ -84,15 +84,32 @@ def _parse_human_answer(value: Any) -> tuple[float | None, str]:
     except FinQAExecutionError:
         return None, "answer_numeric_parse_error"
     unit = (unit or "").lower()
+    if unit in {"thousand", "million", "billion"}:
+        return None, "answer_requires_unit_context"
     if unit == "%":
         number /= 100.0
-    elif unit == "thousand":
-        number *= 1_000
-    elif unit == "million":
-        number *= 1_000_000
-    elif unit == "billion":
-        number *= 1_000_000_000
     return number, "parsed"
+
+
+def _human_answer_matches(value: float, answer: str) -> bool:
+    """Compare a human answer at its displayed precision without guessing scale."""
+    match = _ANSWER.fullmatch(answer.strip())
+    if match is None:
+        return False
+
+    number_text, unit = match.groups()
+    decimal_places = (
+        len(number_text.replace(",", "").split(".", maxsplit=1)[1])
+        if "." in number_text
+        else 0
+    )
+    is_percentage = (unit or "").lower() == "%"
+    actual = value * 100 if is_percentage else value
+    parsed, status = _parse_human_answer(answer)
+    if status != "parsed" or parsed is None:
+        return False
+    expected = parsed * 100 if is_percentage else parsed
+    return round(actual, decimal_places) == round(expected, decimal_places)
 
 
 def _compare_step_annotations(
@@ -262,7 +279,7 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
             result["human_answer_match"] = None
             result["flags"].append("human_answer_requires_manual_review")
         else:
-            answer_match = _close(computed, answer_number)
+            answer_match = _human_answer_matches(computed, str(record.get("answer", "")))
             result["human_answer_match"] = answer_match
             if not answer_match:
                 result["flags"].append("program_human_answer_disagreement")
