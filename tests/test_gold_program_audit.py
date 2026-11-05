@@ -48,5 +48,7 @@ def test_reference_audit_runs_even_when_custom_executor_fails(tmp_path, monkeypa
         ("no", "yes", False),
     ],
 )
-def test_answers_match_rounds_prediction_only_then_compares_exactly(predicted, expected, matches):
+def test_answers_match_rounds_prediction_only_then_compares_exactly(
+    predicted, expected, matches
+):
     assert audit.answers_match(predicted, expected) is matches

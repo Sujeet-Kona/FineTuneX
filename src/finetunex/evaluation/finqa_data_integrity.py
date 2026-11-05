@@ -369,8 +369,12 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
             "human_answer_parser": (
                 "scalar numeric; % normalized; magnitude units require manual review"
             ),
-            "step_numeric_tolerance": "rounded at annotation precision; scientific notation uses 1e-5 tolerance",
-            "exe_ans_numeric_tolerance": "round computed final result to 5 decimals; compare exactly to exe_ans",
+            "step_numeric_tolerance": (
+                "rounded at annotation precision; scientific notation uses 1e-5 tolerance"
+            ),
+            "exe_ans_numeric_tolerance": (
+                "round computed final result to 5 decimals; compare exactly to exe_ans"
+            ),
             "ambiguous_human_answers": "flagged for manual review; never guessed",
         },
         "total_examples": len(all_results),
