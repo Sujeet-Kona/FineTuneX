@@ -40,6 +40,37 @@ def _close(left: float, right: float, *, rel_tol: float = 1e-5) -> bool:
     return math.isclose(left, right, rel_tol=rel_tol, abs_tol=1e-5)
 
 
+def _step_result_matches(value: float | str, annotation: Any) -> bool:
+    """Compare a step result at the precision recorded by FinQA annotations."""
+    if isinstance(value, str):
+        return value.strip().casefold() == str(annotation).strip().casefold()
+
+    raw = str(annotation).strip().replace(",", "")
+    raw = raw.replace("$", "").replace("€", "").replace("£", "").strip()
+    is_percentage = raw.endswith("%")
+    numeric_text = raw[:-1].strip() if is_percentage else raw
+
+    if "e" in numeric_text.casefold():
+        try:
+            return _close(value, parse_number(raw))
+        except FinQAExecutionError:
+            return False
+
+    try:
+        parsed = parse_number(raw)
+    except FinQAExecutionError:
+        return False
+
+    decimal_places = (
+        len(numeric_text.split(".", maxsplit=1)[1])
+        if "." in numeric_text
+        else 0
+    )
+    actual = value * 100 if is_percentage else value
+    expected = parsed * 100 if is_percentage else parsed
+    return round(actual, decimal_places) == round(expected, decimal_places)
+
+
 def _parse_human_answer(value: Any) -> tuple[float | None, str]:
     """Parse only unambiguous single-number answers; never guess alternatives."""
     if not isinstance(value, str):
@@ -130,23 +161,13 @@ def _compare_step_annotations(
             break
 
         annotated_result = arrays["res"][index]
-        try:
-            parsed_annotation = parse_number(str(annotated_result))
-            if isinstance(value, str) or not _close(value, parsed_annotation):
-                issues.append({
-                    "step": index,
-                    "kind": "step_result_mismatch",
-                    "program_result": value,
-                    "annotated_result": annotated_result,
-                })
-        except FinQAExecutionError:
-            if str(value) != str(annotated_result):
-                issues.append({
-                    "step": index,
-                    "kind": "step_result_unparseable_or_mismatch",
-                    "program_result": value,
-                    "annotated_result": annotated_result,
-                })
+        if not _step_result_matches(value, annotated_result):
+            issues.append({
+                "step": index,
+                "kind": "step_result_mismatch",
+                "program_result": value,
+                "annotated_result": annotated_result,
+            })
 
     return {
         "status": "consistent" if not issues else "mismatch",
@@ -161,6 +182,7 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
     result: dict[str, Any] = {
         "id": example_id,
         "program": record.get("program"),
+        "program_re": record.get("program_re"),
         "answer": record.get("answer"),
         "exe_ans": record.get("exe_ans"),
         "flags": [],
