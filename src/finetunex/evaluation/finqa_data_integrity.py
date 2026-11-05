@@ -551,7 +551,7 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
         "exe_ans_disagreements": sum(
             "program_exe_ans_disagreement" in item["flags"] for item in all_results
         ),
-        "exe_ans_disagreement_human_answer_consistents": sum(
+        "exe_ans_disagreement_human_answer_consistent": sum(
             "exe_ans_disagreement_human_answer_consistent" in item["flags"]
             for item in all_results
         ),
