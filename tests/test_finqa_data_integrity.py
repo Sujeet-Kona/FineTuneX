@@ -429,7 +429,7 @@ def test_percentage_step_annotation_matches_ratio_to_percent_convention():
 def test_percentage_step_sign_conflict_is_ambiguous_not_confirmed_mismatch():
     result = audit_record(
         _record(
-            program="divide(subtract(440.9, 442.3), 442.3)",
+            program="subtract(440.9, 442.3), divide(#0, 442.3)",
             exe_ans="-0.00317",
             answer="0.3%",
             steps={
