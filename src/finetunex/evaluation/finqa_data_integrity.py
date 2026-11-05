@@ -62,9 +62,7 @@ def _step_result_matches(value: float | str, annotation: Any) -> bool:
         return False
 
     decimal_places = (
-        len(numeric_text.split(".", maxsplit=1)[1])
-        if "." in numeric_text
-        else 0
+        len(numeric_text.split(".", maxsplit=1)[1]) if "." in numeric_text else 0
     )
     actual = value * 100 if is_percentage else value
     expected = parsed * 100 if is_percentage else parsed
@@ -148,43 +146,51 @@ def _compare_step_annotations(
             else None
         )
         if annotated_operation != step.operation:
-            issues.append({
-                "step": index,
-                "kind": "operation_mismatch",
-                "program": step.operation,
-                "annotated": op_annotation,
-                "normalized_annotation": annotated_operation,
-            })
+            issues.append(
+                {
+                    "step": index,
+                    "kind": "operation_mismatch",
+                    "program": step.operation,
+                    "annotated": op_annotation,
+                    "normalized_annotation": annotated_operation,
+                }
+            )
 
         for field, expected in (("arg1", step.arg1), ("arg2", step.arg2)):
             actual = arrays[field][index]
             if str(actual).strip() != expected:
-                issues.append({
-                    "step": index,
-                    "kind": f"{field}_mismatch",
-                    "program": expected,
-                    "annotated": actual,
-                })
+                issues.append(
+                    {
+                        "step": index,
+                        "kind": f"{field}_mismatch",
+                        "program": expected,
+                        "annotated": actual,
+                    }
+                )
 
         try:
             value = _execute_step(step, table, results, index)
             results.append(value)
         except (FinQAExecutionError, ArithmeticError, TypeError, ValueError) as exc:
-            issues.append({
-                "step": index,
-                "kind": "program_step_execution_error",
-                "error": str(exc),
-            })
+            issues.append(
+                {
+                    "step": index,
+                    "kind": "program_step_execution_error",
+                    "error": str(exc),
+                }
+            )
             break
 
         annotated_result = arrays["res"][index]
         if not _step_result_matches(value, annotated_result):
-            issues.append({
-                "step": index,
-                "kind": "step_result_mismatch",
-                "program_result": value,
-                "annotated_result": annotated_result,
-            })
+            issues.append(
+                {
+                    "step": index,
+                    "kind": "step_result_mismatch",
+                    "program_result": value,
+                    "annotated_result": annotated_result,
+                }
+            )
 
     return {
         "status": "consistent" if not issues else "mismatch",
@@ -332,20 +338,17 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
 
     category_counts = {
         "exe_ans_disagreements": sum(
-            "program_exe_ans_disagreement" in item["flags"]
-            for item in all_results
+            "program_exe_ans_disagreement" in item["flags"] for item in all_results
         ),
         "likely_exe_ans_precision_or_format_issues": sum(
             "likely_exe_ans_precision_or_format_issue" in item["flags"]
             for item in all_results
         ),
         "human_answer_program_disagreements": sum(
-            "program_human_answer_disagreement" in item["flags"]
-            for item in all_results
+            "program_human_answer_disagreement" in item["flags"] for item in all_results
         ),
         "step_annotation_issues": sum(
-            "steps_program_disagreement" in item["flags"]
-            for item in all_results
+            "steps_program_disagreement" in item["flags"] for item in all_results
         ),
         "unexecutable_programs": sum(
             any(
@@ -377,8 +380,10 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
         "requires_manual_review": sum(
             item["classification"] == "requires_manual_review" for item in all_results
         ),
-        "flag_counts": dict(sorted(Counter(
-            flag for item in all_results for flag in item["flags"]
-        ).items())),
+        "flag_counts": dict(
+            sorted(
+                Counter(flag for item in all_results for flag in item["flags"]).items()
+            )
+        ),
         "splits": split_reports,
     }
