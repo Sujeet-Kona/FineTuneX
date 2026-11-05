@@ -51,9 +51,7 @@ def _validate_destination(source: Path, destination: Path) -> None:
 def main() -> int:
     args = parse_args()
     source = _resolve(args.checkpoint)
-    destination = _resolve(
-        args.output_dir or source.parent / f"{source.name}-merged"
-    )
+    destination = _resolve(args.output_dir or source.parent / f"{source.name}-merged")
     _validate_destination(source, destination)
 
     model_config = load_yaml_config(PROJECT_ROOT / "configs/model.yaml")
@@ -71,9 +69,7 @@ def main() -> int:
     settings = model_config["model"]
     loading = settings["loading"]
     tokenizer_settings = settings["tokenizer"]
-    dtype = {"float16": torch.float16, "float32": torch.float32}[
-        loading["dtype"]
-    ]
+    dtype = {"float16": torch.float16, "float32": torch.float32}[loading["dtype"]]
 
     tokenizer = AutoTokenizer.from_pretrained(
         tokenizer_settings["name"],
