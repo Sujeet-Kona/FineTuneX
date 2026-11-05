@@ -110,6 +110,124 @@ def _human_answer_matches(value: float, answer: str) -> bool:
     return round(actual, decimal_places) == round(expected, decimal_places)
 
 
+def _normalize_program_atom(
+    value: str, operation: str, argument_index: int
+) -> tuple[str, Any]:
+    value = value.strip()
+    if operation.startswith("table_") and argument_index == 0:
+        return ("label", value)
+    if value.startswith("#"):
+        return ("reference", value)
+    try:
+        return ("number", parse_number(value))
+    except FinQAExecutionError:
+        return ("symbol", value)
+
+
+def _parse_nested_program(program_re: str) -> tuple[Any, ...]:
+    """Parse the fully nested program representation into a small AST."""
+    position = 0
+
+    def skip_whitespace() -> None:
+        nonlocal position
+        while position < len(program_re) and program_re[position].isspace():
+            position += 1
+
+    def parse_argument(operation: str, argument_index: int) -> Any:
+        nonlocal position
+        skip_whitespace()
+        if re.match(r"[a-z_]+\\s*\\(", program_re[position:]):
+            return parse_expression()
+
+        start = position
+        while position < len(program_re):
+            if program_re[position] == ")":
+                break
+            if (
+                program_re[position] == ","
+                and position + 1 < len(program_re)
+                and program_re[position + 1].isspace()
+            ):
+                break
+            position += 1
+
+        atom = program_re[start:position].strip()
+        if not atom:
+            raise ValueError("Nested program contains an empty argument.")
+        return _normalize_program_atom(atom, operation, argument_index)
+
+    def parse_expression() -> tuple[Any, ...]:
+        nonlocal position
+        skip_whitespace()
+        match = re.match(r"([a-z_]+)\\s*\\(", program_re[position:])
+        if match is None:
+            raise ValueError(f"Expected an operation at offset {position}.")
+
+        operation = match.group(1)
+        position += match.end()
+        arg1 = parse_argument(operation, 0)
+        skip_whitespace()
+        if position >= len(program_re) or program_re[position] != ",":
+            raise ValueError(f"Expected argument separator at offset {position}.")
+        position += 1
+        arg2 = parse_argument(operation, 1)
+        skip_whitespace()
+        if position >= len(program_re) or program_re[position] != ")":
+            raise ValueError(f"Expected closing parenthesis at offset {position}.")
+        position += 1
+        return (operation, arg1, arg2)
+
+    expression = parse_expression()
+    skip_whitespace()
+    if position != len(program_re):
+        raise ValueError(f"Unexpected trailing text at offset {position}.")
+    return expression
+
+
+def _linear_program_expression(steps: tuple[Any, ...]) -> tuple[Any, ...]:
+    expressions: list[tuple[Any, ...]] = []
+    for index, step in enumerate(steps):
+        arguments: list[Any] = []
+        for argument_index, argument in enumerate((step.arg1, step.arg2)):
+            reference = re.fullmatch(r"#(\\d+)", argument)
+            if reference is not None:
+                reference_index = int(reference.group(1))
+                if reference_index >= index:
+                    raise ValueError(
+                        f"Step {index} has invalid reference {argument!r}."
+                    )
+                arguments.append(expressions[reference_index])
+            else:
+                arguments.append(
+                    _normalize_program_atom(
+                        argument, step.operation, argument_index
+                    )
+                )
+        expressions.append((step.operation, *arguments))
+    return expressions[-1]
+
+
+def _compare_program_re(
+    program_re: Any, program_steps: tuple[Any, ...]
+) -> dict[str, Any]:
+    if not isinstance(program_re, str) or not program_re.strip():
+        return {"status": "missing"}
+
+    try:
+        nested_expression = _parse_nested_program(program_re)
+        linear_expression = _linear_program_expression(program_steps)
+    except (FinQAExecutionError, ValueError, TypeError) as exc:
+        return {"status": "invalid", "error": str(exc)}
+
+    return {
+        "status": (
+            "consistent" if nested_expression == linear_expression else "mismatch"
+        ),
+        "nested_expression": nested_expression,
+        "linear_expression": linear_expression,
+    }
+
+
 def _compare_step_annotations(
     record: dict[str, Any], program_steps: tuple[Any, ...], table: Any
 ) -> dict[str, Any]:
@@ -221,6 +339,7 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
             "status": "not_checked",
             "issues": ["program_parse_error"],
         }
+        result["program_re_audit"] = {"status": "not_checked"}
         result["classification"] = "requires_manual_review"
         return result
 
@@ -233,6 +352,12 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
         }
         for step in steps
     ]
+    program_re_audit = _compare_program_re(record.get("program_re"), steps)
+    result["program_re_audit"] = program_re_audit
+    if program_re_audit["status"] == "mismatch":
+        result["flags"].append("program_re_disagreement")
+    elif program_re_audit["status"] == "invalid":
+        result["flags"].append("program_re_invalid")
     table = record.get("table", [])
     intermediate: list[float | str] = []
     try:
@@ -356,6 +481,16 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
                 flag in item["flags"]
                 for flag in ("program_parse_error", "program_execution_error")
             )
+            for item in all_results
+        ),
+        "program_re_disagreements": sum(
+            "program_re_disagreement" in item["flags"] for item in all_results
+        ),
+        "program_re_invalid": sum(
+            "program_re_invalid" in item["flags"] for item in all_results
+        ),
+        "program_re_missing": sum(
+            item.get("program_re_audit", {}).get("status") == "missing"
             for item in all_results
         ),
     }

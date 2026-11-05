@@ -306,3 +306,35 @@ def test_exe_ans_is_not_rounded_before_official_comparison():
     )
     assert result["exe_ans_match"] is False
     assert "program_exe_ans_disagreement" in result["flags"]
+
+
+
+def test_program_re_matches_flat_program_expression():
+    result = audit_record(
+        _record(program_re="divide(add(100, 200), 2)")
+    )
+    assert result["program_re_audit"]["status"] == "consistent"
+
+
+def test_program_re_disagreement_is_reported():
+    result = audit_record(
+        _record(program_re="divide(add(100, 200), 3)")
+    )
+    assert result["program_re_audit"]["status"] == "mismatch"
+    assert "program_re_disagreement" in result["flags"]
+
+
+def test_malformed_program_re_is_reported_for_manual_review():
+    result = audit_record(_record(program_re="divide(add(100, 200), 2"))
+    assert result["program_re_audit"]["status"] == "invalid"
+    assert "program_re_invalid" in result["flags"]
+
+
+def test_program_re_parser_handles_thousands_separators():
+    result = audit_record(
+        _record(
+            program="add(1,000, 25)",
+            program_re="add(1,000, 25)",
+        )
+    )
+    assert result["program_re_audit"]["status"] == "consistent"

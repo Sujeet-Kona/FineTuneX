@@ -42,8 +42,9 @@ For transparent secondary metrics, FineTuneX will report both **overall** result
 
 1. The gold program parses and executes under the official FinQA evaluator.
 2. Its final result matches `exe_ans` using the official five-decimal final-result semantics.
-3. Its recorded `steps.op`, `arg1`, `arg2`, and `res` agree with the linear gold program, applying the documented operation-name aliases and comparing numeric step results only at the precision actually recorded in the annotation.
-4. The human-readable `answer` can be parsed unambiguously under a documented normalization rule and agrees with the program result at its displayed precision. Percentage values are compared in percentage units. Magnitude suffixes (thousand/million/billion) require unit context and are not automatically rescaled.
+3. Its `program_re` nested expression agrees structurally with the expression reconstructed from the flat `program` and `#N` references.
+4. Its recorded `steps.op`, `arg1`, `arg2`, and `res` agree with the linear gold program, applying the documented operation-name aliases and comparing numeric step results only at the precision actually recorded in the annotation.
+5. The human-readable `answer` can be parsed unambiguously under a documented normalization rule and agrees with the program result at its displayed precision. Percentage values are compared in percentage units. Magnitude suffixes (thousand/million/billion) require unit context and are not automatically rescaled.
 
 Ambiguous human answers are not guessed. Such examples remain in the overall set but are not counted in the clean diagnostic subset until manually adjudicated. Percentage values are normalized as ratios. Magnitude suffixes (thousand/million/billion) are not automatically rescaled because their units may already be represented in the table; they require manual unit-context review. The clean subset is for stratified reporting only; it is not a filtered training dataset.
 
