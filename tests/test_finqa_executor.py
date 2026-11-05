@@ -122,10 +122,16 @@ def test_rejects_invalid_table_cell():
         execute_program("table_sum(revenue, none)", table)
 
 
-def test_rejects_empty_table_row():
+def test_empty_table_sum_matches_official_evaluator():
+    table = [["revenue"]]
+    assert execute_program("table_sum(revenue, none)", table) == 0
+
+
+@pytest.mark.parametrize("operation", ["table_max", "table_min", "table_average"])
+def test_empty_table_aggregations_without_defined_result_raise(operation):
     table = [["revenue"]]
     with pytest.raises(FinQAExecutionError):
-        execute_program("table_sum(revenue, none)", table)
+        execute_program(f"{operation}(revenue, none)", table)
 
 
 def test_rejects_non_finite_number():
