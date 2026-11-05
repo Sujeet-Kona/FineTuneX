@@ -9,6 +9,7 @@ import sys
 from collections import Counter
 from datetime import UTC, datetime
 from pathlib import Path
+from time import perf_counter
 from typing import Any
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -17,12 +18,11 @@ SRC_DIR = PROJECT_ROOT / "src"
 if str(SRC_DIR) not in sys.path:
     sys.path.insert(0, str(SRC_DIR))
 
-if str(PROJECT_ROOT / "scripts") not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT / "scripts"))
-
-from evaluate_gold_programs import answers_match  # noqa: E402
-
 from finetunex.config import load_yaml_config  # noqa: E402
+from finetunex.evaluation.answer_comparison import (  # noqa: E402
+    ANSWER_COMPARISON_RULE,
+    answers_match,
+)
 from finetunex.evaluation.finqa_executor import (  # noqa: E402
     FinQAExecutionError,
     execute_program,
@@ -42,6 +42,8 @@ VALIDATION_PATH = PROJECT_ROOT / "data/processed/finqa/validation.jsonl"
 MODEL_CONFIG_PATH = PROJECT_ROOT / "configs/model.yaml"
 TRAINING_CONFIG_PATH = PROJECT_ROOT / "configs/training.yaml"
 PREPROCESSING_CONFIG_PATH = PROJECT_ROOT / "configs/preprocessing.yaml"
+
+FAILURE_EXAMPLES = 20
 
 
 def sha256_file(path: Path) -> str:
@@ -180,12 +182,14 @@ def evaluate_prediction(
         "parse_error": None,
         "execution_error": None,
         "operations": [],
+        "failure_reason": None,
     }
 
     try:
         steps = parse_program(normalized_output)
     except FinQAProgramParseError as exc:
         result["parse_error"] = str(exc)
+        result["failure_reason"] = "parse_failed"
         return result
 
     result["parse_status"] = "success"
@@ -196,16 +200,19 @@ def evaluate_prediction(
     except (FinQAExecutionError, ArithmeticError, ValueError) as exc:
         result["execution_status"] = "failed"
         result["execution_error"] = str(exc)
+        result["failure_reason"] = "execution_failed"
         return result
 
     result["execution_status"] = "success"
     result["predicted_answer"] = predicted
     result["answer_match"] = answers_match(predicted, expected)
+    if not result["answer_match"]:
+        result["failure_reason"] = "wrong_answer"
 
     return result
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Evaluate FineTuneX generated FinQA programs."
     )
@@ -260,7 +267,7 @@ def parse_args() -> argparse.Namespace:
         help="Allow replacing existing evaluation output files.",
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if args.limit is not None and args.limit <= 0:
         parser.error("--limit must be positive")
@@ -270,7 +277,8 @@ def parse_args() -> argparse.Namespace:
     if args.max_new_tokens <= 0:
         parser.error("--max-new-tokens must be positive")
 
-    if args.evidence_budget <= 0:
+    # None means "take the budget from the preprocessing config".
+    if args.evidence_budget is not None and args.evidence_budget <= 0:
         parser.error("--evidence-budget must be positive")
 
     return args
@@ -376,6 +384,9 @@ def main() -> None:
 
     counters: Counter[str] = Counter()
     operation_counts: Counter[str] = Counter()
+    failure_reasons: Counter[str] = Counter()
+    failure_examples: list[dict[str, Any]] = []
+    started_at = perf_counter()
 
     predictions_temp = predictions_path.with_suffix(".jsonl.tmp")
     summary_temp = summary_path.with_suffix(".json.tmp")
@@ -413,6 +424,7 @@ def main() -> None:
                     counters["correct"] += 1
                 else:
                     counters["incorrect"] += 1
+                    failure_reasons[evaluation["failure_reason"]] += 1
 
                 if evaluation["parse_status"] == "failed":
                     counters["parse_failures"] += 1
@@ -428,6 +440,7 @@ def main() -> None:
                         prompt_result["prompt"].encode("utf-8")
                     ).hexdigest(),
                     "split": "validation",
+                    "question": record["question"],
                     "raw_output": generation["raw_output"],
                     "normalized_output": generation["normalized_output"],
                     "generated_token_ids": generation["generated_token_ids"],
@@ -440,10 +453,33 @@ def main() -> None:
                     "predicted_answer": evaluation["predicted_answer"],
                     "expected_answer": record["exe_ans"],
                     "answer_match": evaluation["answer_match"],
+                    "failure_reason": evaluation["failure_reason"],
                     "parse_error": evaluation["parse_error"],
                     "execution_error": evaluation["execution_error"],
                     "operations": evaluation["operations"],
+                    # Diagnostics only: never part of the prompt, which is built
+                    # from inference_only_record and hashed above.
+                    "gold_program": record["program"],
                 }
+
+                if (
+                    not evaluation["answer_match"]
+                    and len(failure_examples) < FAILURE_EXAMPLES
+                ):
+                    failure_examples.append(
+                        {
+                            "record_id": prediction["record_id"],
+                            "question": prediction["question"],
+                            "gold_program": prediction["gold_program"],
+                            "expected_answer": prediction["expected_answer"],
+                            "raw_output": prediction["raw_output"],
+                            "normalized_output": prediction["normalized_output"],
+                            "predicted_answer": prediction["predicted_answer"],
+                            "failure_reason": prediction["failure_reason"],
+                            "parse_error": prediction["parse_error"],
+                            "execution_error": prediction["execution_error"],
+                        }
+                    )
 
                 predictions_file.write(
                     json.dumps(prediction, ensure_ascii=False) + "\n"
@@ -460,10 +496,12 @@ def main() -> None:
                 )
 
         total = counters["total"]
+        valid_predictions = counters["execution_success"]
+        invalid_predictions = total - valid_predictions
         sample_method = "sha256_record_id" if total < 883 else "complete_official_order"
         summary = {
             "evaluation": "finetunex_finqa_generated_programs",
-            "evaluation_schema_version": 1,
+            "evaluation_schema_version": 2,
             "created_at_utc": datetime.now(UTC).isoformat(),
             "split": "validation",
             "scope": {
@@ -477,7 +515,11 @@ def main() -> None:
                 "max_prompt_tokens": max_prompt_tokens,
                 "generation": "greedy",
                 "answer_reference": "exe_ans",
-                "answer_comparison": "exact_after_five_decimal_rounding",
+                "answer_comparison": ANSWER_COMPARISON_RULE,
+            },
+            "runtime": {
+                "device": str(components.device),
+                "duration_seconds": round(perf_counter() - started_at, 3),
             },
             "model_source": {
                 "type": "base_model" if args.base_model else "lora_adapter",
@@ -513,10 +555,21 @@ def main() -> None:
                 "execution_success": counters["execution_success"],
                 "execution_failures": counters["execution_failures"],
                 "execution_rate": counters["execution_success"] / total,
+                "valid_predictions": valid_predictions,
+                "invalid_predictions": invalid_predictions,
+                "valid_prediction_rate": valid_predictions / total,
+                "invalid_prediction_rate": invalid_predictions / total,
                 "correct": counters["correct"],
                 "incorrect": counters["incorrect"],
                 "answer_accuracy": counters["correct"] / total,
+                "answer_accuracy_over_valid_predictions": (
+                    counters["correct"] / valid_predictions
+                    if valid_predictions
+                    else 0.0
+                ),
             },
+            "failure_reasons": dict(failure_reasons),
+            "failure_examples": failure_examples,
             "operation_counts": dict(operation_counts),
             "artifacts": {
                 "predictions": predictions_path.name,
@@ -544,8 +597,19 @@ def main() -> None:
     print(f"  Parse failures:    {counters['parse_failures']}")
     print(f"  Execution success: {counters['execution_success']}")
     print(f"  Execution failures:{counters['execution_failures']}")
+    print(f"  Valid predictions: {valid_predictions}")
+    print(f"  Invalid preds:     {invalid_predictions}")
     print(f"  Correct answers:   {counters['correct']}")
+    print(f"  Answer comparison: {ANSWER_COMPARISON_RULE}")
     print(f"  Answer accuracy:   {summary['metrics']['answer_accuracy']:.2%}")
+    print(f"  Device:            {summary['runtime']['device']}")
+    print(f"  Duration (s):      {summary['runtime']['duration_seconds']}")
+
+    if failure_reasons:
+        print("\nFAILURE REASONS")
+        for reason, count in failure_reasons.most_common():
+            print(f"  {reason:20} {count}")
+
     print(f"\nPredictions: {predictions_path}")
     print(f"Summary:     {summary_path}")
 

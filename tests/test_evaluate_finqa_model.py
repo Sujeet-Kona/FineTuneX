@@ -107,6 +107,95 @@ def test_table_program_executes_against_source_table():
     assert result["answer_match"] is True
 
 
+def test_correct_prediction_has_no_failure_reason():
+    result = evaluate_prediction("divide(637, const_5)", [], "127.4")
+
+    assert result["answer_match"] is True
+    assert result["failure_reason"] is None
+
+
+@pytest.mark.parametrize(
+    "normalized_output",
+    [
+        "",
+        "   ",
+        # The unadapted base model answers in prose instead of emitting a program.
+        "The average payment volume per transaction is $5.0 billion.",
+        # Steps separated by newlines rather than the comma-space delimiter.
+        "add(23, 198)  \nadd(4, 60)",
+        # The DSL description echoed back instead of a program.
+        "add(a, b) adds; subtract(a, b) computes a minus b",
+    ],
+)
+def test_unparseable_output_is_a_parse_failure(normalized_output):
+    result = evaluate_prediction(normalized_output, [], "127.4")
+
+    assert result["parse_status"] == "failed"
+    assert result["execution_status"] == "not_attempted"
+    assert result["answer_match"] is False
+    assert result["failure_reason"] == "parse_failed"
+    assert result["parse_error"]
+
+
+@pytest.mark.parametrize(
+    "normalized_output",
+    [
+        "add(#0, #1)",
+        "divide(10, 0)",
+        "table_sum(Missing row, none)",
+        "add(2009 net revenue, 2010 net revenue)",
+    ],
+)
+def test_unexecutable_program_is_an_execution_failure(normalized_output):
+    result = evaluate_prediction(normalized_output, [], "127.4")
+
+    assert result["parse_status"] == "success"
+    assert result["execution_status"] == "failed"
+    assert result["answer_match"] is False
+    assert result["failure_reason"] == "execution_failed"
+    assert result["execution_error"]
+
+
+def test_executable_but_wrong_program_is_a_wrong_answer():
+    result = evaluate_prediction("divide(647, const_5)", [], "127.4")
+
+    assert result["execution_status"] == "success"
+    assert result["predicted_answer"] == 129.4
+    assert result["answer_match"] is False
+    assert result["failure_reason"] == "wrong_answer"
+
+
+def test_display_precision_difference_is_still_correct():
+    # Regression: the stored exe_ans uses six significant digits, so scoring a
+    # gold program against its own annotation must not fail.
+    result = evaluate_prediction("divide(9896, 23.6%)", [], "41932.2")
+
+    assert result["predicted_answer"] == 41932.20339
+    assert result["answer_match"] is True
+    assert result["failure_reason"] is None
+
+
+def test_parse_args_accepts_the_makefile_default_invocation():
+    # `make evaluate-base` passes no --evidence-budget; None means "resolve the
+    # budget from the preprocessing config".
+    args = evaluator.parse_args(["--base-model"])
+
+    assert args.base_model is True
+    assert args.checkpoint is None
+    assert args.evidence_budget is None
+    assert args.limit is None
+
+
+def test_parse_args_rejects_non_positive_evidence_budget():
+    with pytest.raises(SystemExit):
+        evaluator.parse_args(["--base-model", "--evidence-budget", "0"])
+
+
+def test_parse_args_rejects_non_positive_limit():
+    with pytest.raises(SystemExit):
+        evaluator.parse_args(["--base-model", "--limit", "0"])
+
+
 def test_validation_provenance_accepts_matching_source_and_artifact(
     tmp_path, monkeypatch
 ):

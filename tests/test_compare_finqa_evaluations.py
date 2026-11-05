@@ -1,5 +1,6 @@
 import pytest
 
+from finetunex.evaluation.answer_comparison import ANSWER_COMPARISON_RULE
 from scripts.compare_finqa_evaluations import compare
 
 
@@ -19,7 +20,7 @@ def make_summary(source):
             "evidence_budget": 1024,
             "generation": "greedy",
             "answer_reference": "exe_ans",
-            "answer_comparison": "exact_after_five_decimal_rounding",
+            "answer_comparison": ANSWER_COMPARISON_RULE,
         },
         "inputs": {
             "validation_sha256": "validation",
@@ -148,6 +149,19 @@ def test_rejects_validation_sample_seed_mismatch():
     adapter_summary["scope"]["sample_seed"] = 7
 
     with pytest.raises(ValueError, match="Scope mismatch: sample_seed"):
+        compare(
+            make_summary("base_model"),
+            make_rows(),
+            adapter_summary,
+            make_rows(),
+        )
+
+
+def test_rejects_answer_comparison_rule_mismatch():
+    adapter_summary = make_summary("lora_adapter")
+    adapter_summary["scope"]["answer_comparison"] = "exact_after_five_decimal_rounding"
+
+    with pytest.raises(ValueError, match="Scope mismatch: answer_comparison"):
         compare(
             make_summary("base_model"),
             make_rows(),

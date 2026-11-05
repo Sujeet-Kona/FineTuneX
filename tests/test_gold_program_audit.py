@@ -4,6 +4,9 @@ import json
 
 import pytest
 
+from finetunex.evaluation.answer_comparison import (
+    answers_match as canonical_answers_match,
+)
 from finetunex.evaluation.finqa_executor import FinQAExecutionError
 from scripts import evaluate_gold_programs as audit
 
@@ -48,7 +51,6 @@ def test_reference_audit_runs_even_when_custom_executor_fails(tmp_path, monkeypa
         ("no", "yes", False),
     ],
 )
-def test_answers_match_rounds_prediction_only_then_compares_exactly(
-    predicted, expected, matches
-):
+def test_answers_match_uses_the_canonical_comparison_rule(predicted, expected, matches):
+    assert audit.answers_match is canonical_answers_match
     assert audit.answers_match(predicted, expected) is matches

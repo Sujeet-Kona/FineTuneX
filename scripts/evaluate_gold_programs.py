@@ -6,10 +6,13 @@ import json
 from collections import Counter
 from pathlib import Path
 
+from finetunex.evaluation.answer_comparison import (
+    ANSWER_COMPARISON_RULE,
+    answers_match,
+)
 from finetunex.evaluation.finqa_executor import (
     FinQAExecutionError,
     execute_program,
-    parse_number,
 )
 from finetunex.evaluation.finqa_parser import parse_program
 from finetunex.evaluation.finqa_reference import reference_execute_program
@@ -17,21 +20,6 @@ from finetunex.evaluation.finqa_reference import reference_execute_program
 DATA_DIR = Path("data/processed/finqa")
 SPLITS = ("train", "validation")
 ERROR_EXAMPLES = 20
-
-
-def answers_match(predicted: float | str, expected: object) -> bool:
-    """Compare using the official evaluator's numeric result semantics."""
-    if isinstance(predicted, str):
-        return predicted == expected
-
-    try:
-        expected_number = parse_number(str(expected))
-    except (FinQAExecutionError, TypeError, ValueError):
-        return False
-
-    # execute_program already rounds the prediction to five decimals. The
-    # official evaluator compares that value directly to the unrounded exe_ans.
-    return predicted == expected_number
 
 
 def evaluate_split(split: str) -> dict[str, object]:
@@ -224,7 +212,7 @@ def main() -> None:
 
     report = {
         "evaluation": "finqa_gold_program_execution",
-        "comparison": "exact_after_five_decimal_rounding",
+        "comparison": ANSWER_COMPARISON_RULE,
         "total": total_examples,
         "executed": total_successful,
         "execution_errors": len(all_errors),
