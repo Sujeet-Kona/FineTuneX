@@ -6,9 +6,18 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from threading import Lock
+from time import perf_counter
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import Response
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    CollectorRegistry,
+    Counter,
+    Histogram,
+    generate_latest,
+)
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from finetunex.config import load_yaml_config
@@ -123,6 +132,48 @@ def create_app(
         description="Inference API for the FineTuneX FinQA reasoning adapter.",
         lifespan=lifespan,
     )
+
+    metrics_registry = CollectorRegistry()
+    request_counter = Counter(
+        "finetunex_http_requests_total",
+        "Total HTTP requests handled by FineTuneX.",
+        labelnames=("method", "route", "status_code"),
+        registry=metrics_registry,
+    )
+    request_latency = Histogram(
+        "finetunex_http_request_duration_seconds",
+        "HTTP request latency in seconds.",
+        labelnames=("method", "route"),
+        registry=metrics_registry,
+    )
+    application.state.metrics_registry = metrics_registry
+
+    @application.middleware("http")
+    async def observe_http_requests(request: Request, call_next):
+        if request.url.path == "/metrics":
+            return await call_next(request)
+
+        started_at = perf_counter()
+        route = request.scope.get("route")
+        route_label = getattr(route, "path", "unmatched")
+        status_code = "500"
+        try:
+            response = await call_next(request)
+            status_code = str(response.status_code)
+            return response
+        finally:
+            elapsed = perf_counter() - started_at
+            request_counter.labels(
+                request.method, route_label, status_code
+            ).inc()
+            request_latency.labels(request.method, route_label).observe(elapsed)
+
+    @application.get("/metrics", include_in_schema=False)
+    def metrics() -> Response:
+        return Response(
+            content=generate_latest(metrics_registry),
+            media_type=CONTENT_TYPE_LATEST,
+        )
 
     @application.get("/health/live")
     def liveness() -> dict[str, str]:
