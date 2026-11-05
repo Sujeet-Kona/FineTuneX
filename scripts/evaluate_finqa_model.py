@@ -251,8 +251,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--evidence-budget",
         type=int,
-        default=1024,
-        help="Maximum evidence tokens supplied to the prompt.",
+        default=None,
+        help="Maximum evidence tokens supplied to the prompt (defaults to preprocessing config).",
     )
     parser.add_argument(
         "--overwrite",
@@ -314,6 +314,14 @@ def main() -> None:
     preprocessing_config = load_yaml_config(PREPROCESSING_CONFIG_PATH)["preprocessing"]
     max_prompt_tokens = preprocessing_config["sequence"]["max_prompt_length"]
     configured_max_new_tokens = preprocessing_config["generation"]["max_new_tokens"]
+    configured_evidence_budget = preprocessing_config["evidence"]["token_budget"]
+    evidence_budget = (
+        configured_evidence_budget
+        if args.evidence_budget is None
+        else args.evidence_budget
+    )
+    if evidence_budget <= 0:
+        raise ValueError("--evidence-budget must be a positive integer")
 
     if args.max_new_tokens > configured_max_new_tokens:
         raise ValueError(
@@ -324,8 +332,6 @@ def main() -> None:
     max_sequence_length = training_config["training"]["max_sequence_length"]
     if max_prompt_tokens + args.max_new_tokens > max_sequence_length:
         raise ValueError("Prompt budget and generation limit exceed sequence limit")
-
-    evidence_budget = args.evidence_budget
 
     print("FINETUNEX — FINQA MODEL EVALUATION")
     print("=" * 64)
