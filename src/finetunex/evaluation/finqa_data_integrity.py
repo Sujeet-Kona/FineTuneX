@@ -40,9 +40,7 @@ def _close(left: float, right: float, *, rel_tol: float = 1e-5) -> bool:
     return math.isclose(left, right, rel_tol=rel_tol, abs_tol=1e-5)
 
 
-def _step_result_comparison(
-    value: float | str, annotation: Any
-) -> dict[str, Any]:
+def _step_result_comparison(value: float | str, annotation: Any) -> dict[str, Any]:
     """Classify a step annotation without guessing percentage conventions."""
     if isinstance(value, str):
         matched = value.strip().casefold() == str(annotation).strip().casefold()
@@ -59,9 +57,7 @@ def _step_result_comparison(
         return {"status": "unparseable"}
 
     decimal_places = (
-        len(numeric_text.split(".", maxsplit=1)[1])
-        if "." in numeric_text
-        else 0
+        len(numeric_text.split(".", maxsplit=1)[1]) if "." in numeric_text else 0
     )
     if is_percentage:
         actual_percentage = value * 100
@@ -284,9 +280,7 @@ def _compare_step_annotations(
     issues: list[dict[str, Any]] = []
     for index, step in enumerate(program_steps):
         op_annotation = arrays["op"][index]
-        annotated_operation = _normalize_step_operation(
-            op_annotation, step.operation
-        )
+        annotated_operation = _normalize_step_operation(op_annotation, step.operation)
         if annotated_operation != step.operation:
             issues.append(
                 {
@@ -369,11 +363,7 @@ def _compare_step_annotations(
     )
     ambiguous = "step_result_ambiguous" in issue_kinds
     status = (
-        "mismatch"
-        if confirmed_mismatch
-        else "ambiguous"
-        if ambiguous
-        else "consistent"
+        "mismatch" if confirmed_mismatch else "ambiguous" if ambiguous else "consistent"
     )
     return {
         "status": status,
