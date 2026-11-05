@@ -164,3 +164,39 @@ def test_detects_awk_program_steps_and_answer_conflict():
     )
     assert "steps_program_disagreement" in result["flags"]
     assert "program_human_answer_disagreement" in result["flags"]
+
+
+def test_source_minus_annotation_maps_to_subtract():
+    result = audit_record(
+        _record(
+            program="subtract(10, 3)",
+            exe_ans="7",
+            answer="7",
+            steps={
+                "op": ["minus1-1"],
+                "arg1": ["10"],
+                "arg2": ["3"],
+                "res": ["7"],
+            },
+        )
+    )
+    assert result["steps_audit"]["status"] == "consistent"
+    assert result["classification"] == "internally_consistent"
+
+
+def test_source_compare_larger_annotation_maps_to_greater():
+    result = audit_record(
+        _record(
+            program="greater(10, 3)",
+            exe_ans="yes",
+            answer="yes",
+            steps={
+                "op": ["compare_larger1-1"],
+                "arg1": ["10"],
+                "arg2": ["3"],
+                "res": ["yes"],
+            },
+        )
+    )
+    assert result["steps_audit"]["status"] == "consistent"
+    assert result["classification"] == "internally_consistent"
