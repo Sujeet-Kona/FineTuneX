@@ -167,3 +167,4 @@ def test_reference_executor_resolves_table_row_references():
     program = "greater(2, 1), table_sum(#0, none)"
 
     assert reference_execute_program(program, table) == 30
+    assert execute_program(program, table) == 30
