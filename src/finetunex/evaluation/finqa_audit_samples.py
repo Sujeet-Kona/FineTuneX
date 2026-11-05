@@ -1,4 +1,4 @@
-"""Deterministic, source-verified export of FinQA annotation audit samples."""
+"""Source-verified, deterministic, split-stratified FinQA audit sample export."""
 
 from __future__ import annotations
 
@@ -21,6 +21,8 @@ CATEGORY_FLAGS: dict[str, tuple[str, ...]] = {
     "program_re_invalid": ("program_re_invalid",),
     "program_re_missing": (),
 }
+
+SPLIT_ORDER = {"train": 0, "validation": 1, "test": 2}
 
 
 def _read_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -46,6 +48,60 @@ def _has_category(audit_record: dict[str, Any], category: str) -> bool:
     return bool(flags.intersection(CATEGORY_FLAGS[category]))
 
 
+def _select_stratified(
+    candidates: list[dict[str, Any]], *, category: str, limit: int
+) -> list[dict[str, Any]]:
+    """Select a deterministic hash-ranked sample with proportional split quotas."""
+    grouped: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for item in candidates:
+        grouped[item["split"]].append(item)
+
+    total = len(candidates)
+    target = min(limit, total)
+    if target == total:
+        return sorted(
+            candidates,
+            key=lambda item: (
+                SPLIT_ORDER[item["split"]],
+                str(item["source_record"]["id"]),
+            ),
+        )
+
+    # Largest-remainder apportionment keeps the sample proportional to the
+    # category's split distribution while ensuring the requested total.
+    quotas: dict[str, int] = {}
+    remainders: list[tuple[float, int, str]] = []
+    for split, items in grouped.items():
+        exact = target * len(items) / total
+        quotas[split] = int(exact)
+        remainders.append(
+            (exact - quotas[split], SPLIT_ORDER[split], split)
+        )
+
+    remaining = target - sum(quotas.values())
+    for _, _, split in sorted(remainders, key=lambda value: (-value[0], value[1]))[
+        :remaining
+    ]:
+        quotas[split] += 1
+
+    selected: list[dict[str, Any]] = []
+    for split in sorted(grouped, key=SPLIT_ORDER.__getitem__):
+        ranked = sorted(
+            grouped[split],
+            key=lambda item: hashlib.sha256(
+                (
+                    category
+                    + "\\0"
+                    + split
+                    + "\\0"
+                    + str(item["source_record"]["id"])
+                ).encode("utf-8")
+            ).hexdigest(),
+        )
+        selected.extend(ranked[: quotas[split]])
+    return selected
+
+
 def export_audit_samples(
     *,
     source_dir: Path,
@@ -53,11 +109,10 @@ def export_audit_samples(
     output_dir: Path,
     limit_per_category: int = 10,
 ) -> dict[str, Any]:
-    """Export up to N deterministic examples per category after source verification.
+    """Export source-verified samples, stratified across the dataset splits.
 
     Each JSONL item contains the untouched source record alongside its audit
-    result. The source split's SHA-256 and record count must match the audit
-    report before any samples are written.
+    result. Source hashes and counts must match the audit report before writing.
     """
     if limit_per_category < 1:
         raise ValueError("limit_per_category must be at least 1")
@@ -123,23 +178,22 @@ def export_audit_samples(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest_categories: dict[str, Any] = {}
-    split_order = {"train": 0, "validation": 1, "test": 2}
     for category in CATEGORY_FLAGS:
-        ordered = sorted(
-            candidates[category],
-            key=lambda item: (
-                split_order[item["split"]],
-                str(item["source_record"]["id"]),
-            ),
+        selected = _select_stratified(
+            candidates[category], category=category, limit=limit_per_category
         )
-        selected = ordered[:limit_per_category]
         output_path = output_dir / f"{category}.jsonl"
         with output_path.open("w", encoding="utf-8") as file:
             for item in selected:
-                file.write(json.dumps(item, ensure_ascii=False) + "\n")
+                file.write(json.dumps(item, ensure_ascii=False) + "\\n")
+        split_counts = {
+            split: sum(item["split"] == split for item in selected)
+            for split in ("train", "validation", "test")
+        }
         manifest_categories[category] = {
-            "available_count": len(ordered),
+            "available_count": len(candidates[category]),
             "exported_count": len(selected),
+            "exported_split_counts": split_counts,
             "output_file": output_path.name,
             "sample_ids": [
                 f"{item['split']}:{item['source_record']['id']}" for item in selected
@@ -151,12 +205,15 @@ def export_audit_samples(
         "audit": "finqa_annotation_integrity",
         "audit_report": str(audit_path),
         "limit_per_category": limit_per_category,
-        "selection": "first N by split order train, validation, test then string ID",
+        "selection": (
+            "proportional train/validation/test quotas using largest-remainder "
+            "apportionment; deterministic SHA-256 ranking within each split"
+        ),
         "source_splits": source_provenance,
         "categories": manifest_categories,
     }
     (output_dir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
+        json.dumps(manifest, indent=2, ensure_ascii=False) + "\\n",
         encoding="utf-8",
     )
     return manifest
