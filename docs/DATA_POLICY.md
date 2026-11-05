@@ -1,6 +1,6 @@
 # FinQA Data Policy
 
-**Status:** Policy defined; local data counts and annotation-audit findings are not yet verified.  
+**Status:** Policy defined; local full-split audit has been generated and is undergoing representative-record review.  
 **Dataset:** `bevaya/FinQA`  
 **Pinned revision:** `3d6a736bc67e06bc15fbf3618d88204a57c5b25e`
 
@@ -49,6 +49,10 @@ For transparent secondary metrics, FineTuneX will report both **overall** result
 Ambiguous human answers and step percentage conventions are not guessed. Such examples remain in the overall set but are not counted in the clean diagnostic subset until manually adjudicated. Human-answer percentage comparison accepts either ratio or percentage-point program output for an explicitly marked percentage answer; an unmarked numeric answer is considered in percentage points only when the question or recorded steps establish that context. Step percentage annotations use ratio-to-percent comparison only when it matches at displayed precision; otherwise they are marked ambiguous. Magnitude suffixes (thousand/million/billion) are not automatically rescaled because their units may already be represented in the table; they require manual unit-context review. The clean subset is for stratified reporting only; it is not a filtered training dataset.
 
 **Current clean-subset counts: MISSING.** The integrity checker has been repaired but the local audit has not yet been rerun and reviewed.
+
+## Interpretation of execution-answer diagnostics
+
+The per-record flag `exe_ans_disagreement_human_answer_consistent` means only that the computed program result disagrees with the recorded `exe_ans` under the official comparison, while the parseable human-readable answer agrees with the computed result. It is a diagnostic intersection, **not proof** that the `exe_ans` difference is caused by rounding or formatting. Records carrying this flag also retain `program_exe_ans_disagreement` and remain in `requires_manual_review`. Do not use this flag alone to include records in the clean diagnostic subset or to alter official evaluator semantics.
 
 ## Required reporting
 
