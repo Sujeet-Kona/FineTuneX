@@ -123,7 +123,9 @@ class MLflowTracker:
                 if self.artifacts.get("log_checkpoint_metadata", True):
                     metadata = checkpoint_dir / "checkpoint_metadata.json"
                     if metadata.is_file():
-                        self.mlflow.log_artifact(str(metadata), artifact_path="checkpoint")
+                        self.mlflow.log_artifact(
+                            str(metadata), artifact_path="checkpoint"
+                        )
         finally:
             self.mlflow.end_run(status=status)
             self.started = False

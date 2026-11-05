@@ -164,9 +164,7 @@ def create_app(
             return response
         finally:
             elapsed = perf_counter() - started_at
-            request_counter.labels(
-                request.method, route_label, status_code
-            ).inc()
+            request_counter.labels(request.method, route_label, status_code).inc()
             request_latency.labels(request.method, route_label).observe(elapsed)
 
     @application.get("/metrics", include_in_schema=False)

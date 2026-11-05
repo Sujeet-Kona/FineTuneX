@@ -21,10 +21,10 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from finetunex.artifacts.checkpoint import save_best_checkpoint  # noqa: E402
 from finetunex.config import load_yaml_config  # noqa: E402
+from finetunex.tracking.mlflow_tracker import MLflowTracker  # noqa: E402
 from finetunex.training.data import FinQACollator, FinQADataset  # noqa: E402
 from finetunex.training.engine import evaluate, train_one_epoch  # noqa: E402
 from finetunex.training.model import load_training_components  # noqa: E402
-from finetunex.tracking.mlflow_tracker import MLflowTracker  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
@@ -283,7 +283,9 @@ def main() -> int:
     model_config = load_yaml_config(PROJECT_ROOT / "configs/model.yaml")
     training_config = load_yaml_config(PROJECT_ROOT / "configs/training.yaml")
     preprocessing_config = load_yaml_config(PROJECT_ROOT / "configs/preprocessing.yaml")
-    experiment_config = load_yaml_config(PROJECT_ROOT / "configs/experiment.yaml")["experiment"]
+    experiment_config = load_yaml_config(PROJECT_ROOT / "configs/experiment.yaml")[
+        "experiment"
+    ]
 
     dataset_settings = dataset_config["dataset"]
     model_settings = model_config["model"]
@@ -447,7 +449,9 @@ def main() -> int:
             "gradient_accumulation_steps": accumulation_steps,
             "learning_rate": learning_rate,
             "device": str(components.device),
-            "run_type": "limited_smoke" if args.max_train_batches or args.max_validation_batches else "full_dataset",
+            "run_type": "limited_smoke"
+            if args.max_train_batches or args.max_validation_batches
+            else "full_dataset",
         },
         config_paths=config_paths,
     )
@@ -550,7 +554,8 @@ def main() -> int:
                 },
                 "evaluation_scope": {
                     "train_batches_limited": args.max_train_batches is not None,
-                    "validation_batches_limited": args.max_validation_batches is not None,
+                    "validation_batches_limited": args.max_validation_batches
+                    is not None,
                     "max_train_batches_per_epoch": args.max_train_batches,
                     "max_validation_batches_per_epoch": args.max_validation_batches,
                     "training_examples_per_epoch": processed_example_count(
@@ -582,7 +587,6 @@ def main() -> int:
                 print("Checkpoint unchanged; validation did not improve.")
 
             print("Best validation loss:", f"{best_validation_loss:.6f}")
-
 
         run_status = "FINISHED"
     finally:
