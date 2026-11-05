@@ -84,17 +84,22 @@ def reference_execute_program(
         operation = step.operation
         if operation.startswith("table_"):
             table_by_label = {row[0]: row[1:] for row in table if row}
+            row_label: float | str = step.arg1
             if "#" in step.arg1:
+                try:
+                    row_label = results[int(step.arg1.replace("#", ""))]
+                except (ValueError, KeyError) as exc:
+                    raise ReferenceExecutionError(
+                        f"Invalid table row reference: {step.arg1!r}"
+                    ) from exc
+
+            if row_label not in table_by_label:
                 raise ReferenceExecutionError(
-                    "Upstream table-reference branch is invalid for a gold row label"
-                )
-            if step.arg1 not in table_by_label:
-                raise ReferenceExecutionError(
-                    f"Table row not found: {step.arg1!r}"
+                    f"Table row not found: {row_label!r}"
                 )
 
             numeric_cells = []
-            for cell in table_by_label[step.arg1]:
+            for cell in table_by_label[row_label]:
                 if not isinstance(cell, str):
                     raise ReferenceExecutionError(
                         "Table cells must be strings"
