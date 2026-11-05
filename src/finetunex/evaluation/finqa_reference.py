@@ -6,8 +6,8 @@ and table-cell behavior from FinQA's public evaluator. It audits gold programs.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 import math
+from collections.abc import Sequence
 
 from finetunex.evaluation.finqa_parser import parse_program
 
