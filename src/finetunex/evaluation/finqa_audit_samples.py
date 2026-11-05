@@ -123,11 +123,12 @@ def export_audit_samples(
 
     output_dir.mkdir(parents=True, exist_ok=True)
     manifest_categories: dict[str, Any] = {}
+    split_order = {"train": 0, "validation": 1, "test": 2}
     for category in CATEGORY_FLAGS:
         ordered = sorted(
             candidates[category],
             key=lambda item: (
-                item["split"],
+                split_order[item["split"]],
                 str(item["source_record"]["id"]),
             ),
         )
