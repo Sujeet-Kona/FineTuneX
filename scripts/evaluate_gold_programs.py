@@ -58,6 +58,9 @@ def evaluate_split(split: str) -> dict[str, object]:
             for step in parse_program(program):
                 operation_counts[step.operation] += 1
 
+            predicted: float | str | None = None
+            reference_predicted: float | str | None = None
+
             try:
                 predicted = execute_program(program, record["table"])
                 successful += 1
@@ -71,7 +74,6 @@ def evaluate_split(split: str) -> dict[str, object]:
                         "error": str(exc),
                     }
                 )
-                continue
 
             try:
                 reference_predicted = reference_execute_program(
@@ -98,29 +100,31 @@ def evaluate_split(split: str) -> dict[str, object]:
                             "expected": expected,
                         }
                     )
-                if reference_predicted != predicted:
-                    executor_disagreements.append(
+
+            if predicted is not None:
+                if answers_match(predicted, expected):
+                    matched += 1
+                else:
+                    mismatches.append(
                         {
                             "line": line_number,
                             "id": record["id"],
                             "program": program,
-                            "custom_predicted": predicted,
-                            "reference_predicted": reference_predicted,
+                            "predicted": predicted,
                             "expected": expected,
+                            "answer": record.get("answer"),
                         }
                     )
 
-            if answers_match(predicted, expected):
-                matched += 1
-            else:
-                mismatches.append(
+            if predicted != reference_predicted:
+                executor_disagreements.append(
                     {
                         "line": line_number,
                         "id": record["id"],
                         "program": program,
-                        "predicted": predicted,
+                        "custom_predicted": predicted,
+                        "reference_predicted": reference_predicted,
                         "expected": expected,
-                        "answer": record.get("answer"),
                     }
                 )
 
