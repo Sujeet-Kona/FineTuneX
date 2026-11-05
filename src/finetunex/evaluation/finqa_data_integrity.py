@@ -185,7 +185,7 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
             exe_match = (
                 computed == expected
                 if isinstance(computed, str)
-                else _close(computed, expected_number, rel_tol=0.0)
+                else round(computed, 5) == round(expected_number, 5)
             )
             result["exe_ans_match"] = exe_match
             if not exe_match:
