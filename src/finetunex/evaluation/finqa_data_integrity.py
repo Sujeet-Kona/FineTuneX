@@ -106,7 +106,6 @@ def _compare_step_annotations(
                 "program": step.operation,
                 "annotated": op_annotation,
                 "normalized_annotation": annotated_operation,
-                "normalized_annotation": annotated_operation,
             })
 
         for field, expected in (("arg1", step.arg1), ("arg2", step.arg2)):
