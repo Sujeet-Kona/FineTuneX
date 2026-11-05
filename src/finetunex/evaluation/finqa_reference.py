@@ -39,14 +39,10 @@ def _reference_number(value: str) -> float:
                     f"Invalid reference constant: {value!r}"
                 ) from exc
         else:
-            raise ReferenceExecutionError(
-                f"Invalid reference number: {value!r}"
-            )
+            raise ReferenceExecutionError(f"Invalid reference number: {value!r}")
 
     if not math.isfinite(number):
-        raise ReferenceExecutionError(
-            f"Non-finite reference number: {value!r}"
-        )
+        raise ReferenceExecutionError(f"Non-finite reference number: {value!r}")
     return number
 
 
