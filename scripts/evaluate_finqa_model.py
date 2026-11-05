@@ -91,6 +91,10 @@ def load_validation_records(
                 "post_text",
                 "table",
                 "exe_ans",
+                # Required for the recorded gold_program diagnostic, never for the
+                # prompt. Checking it here fails before inference instead of leaving
+                # a KeyError to abort a completed run whose temp output is discarded.
+                "program",
             )
             missing = [key for key in required if key not in record]
             if missing:

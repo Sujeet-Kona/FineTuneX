@@ -130,9 +130,9 @@ The vendored execution oracle is based on `czyssrs/FinQA/code/evaluate/evaluate.
   divergence (image pins 2.6.0, `pyproject.toml` allows `>=2.15,<3.0`) is documented and
   unresolved.
 - Quality gates at the current working tree: `ruff check .` passed, `ruff format --check .`
-  passed (79 files), **430 tests passed** (428 before the two real-MLflow tests were
-  added), 2 warnings (the Starlette deprecation plus an SQLAlchemy deprecation raised
-  inside MLflow's own store).
+  passed (79 files), **431 tests passed** (430 before the loader's missing-`program`
+  regression test was added; 428 before the two real-MLflow tests), 2 warnings (the
+  Starlette deprecation plus an SQLAlchemy deprecation raised inside MLflow's own store).
 
 There are 26 test files in the current repository tree. CI tests are synthetic/offline tests; they do not establish correctness on the pinned downloaded dataset or MPS hardware. The full 883-example MPS runs and the 7,134-record gold audit are the checks that exercise real data and real hardware.
 

@@ -500,16 +500,21 @@ five YAML configs, which contain no credentials.
   subset has not been adjudicated.
 - **Evidence is not in Git.** `artifacts/` and `experiments/` are gitignored, so the
   JSON reports cited here exist only on the machine that produced them.
-- **One latent defect was found and deliberately left.** In
-  `scripts/evaluate_finqa_model.py`, `load_validation_records()` validates the tuple
-  `("id", "question", "pre_text", "post_text", "table", "exe_ans")` but line 462 then
-  writes `record["program"]`, so `program` is a de-facto required field that the check
-  does not list. It cannot affect any measured run — all 883 records in the pinned split
-  carry `program`, `configs/dataset.yaml` already lists it in `required_fields`, and the
-  failure mode would be a plain `KeyError` rather than a silently wrong score — so the
-  cost of the fix (churning three test fixtures that build minimal records) buys only a
-  better error message. It is recorded here instead of being patched around finished
-  runs.
+- **Under-declared required field (fixed 2026-11-05).** In
+  `scripts/evaluate_finqa_model.py`, `load_validation_records()` checked
+  `("id", "question", "pre_text", "post_text", "table", "exe_ans")` while the prediction
+  record written later in the loop required `record["program"]` for its
+  diagnostics-only `gold_program` field. The gap was not cosmetic: predictions stream to
+  a `validation_predictions.jsonl.tmp` that is only promoted to its final name after the
+  loop completes, and the `except Exception` handler unlinks that temp file before
+  re-raising, so a record missing `program` raised a `KeyError` at that record and left
+  nothing on disk — every generation already computed, up to the whole 883-example MPS
+  run.
+  `program` is now in the checked tuple, so the loader fails before the model loads.
+  `tests/test_evaluate_finqa_model.py::test_validation_loader_rejects_a_record_without_a_gold_program`
+  covers it. This changes no measured run: all 883 records in the pinned split carry a
+  non-empty `program`, the loader still returns all 883, and the 32-record seed-42 hash
+  sample reproduces the recorded pilot run's IDs in the same order.
 
 ## Reproduction
 

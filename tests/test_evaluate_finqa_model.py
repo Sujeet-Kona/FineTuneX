@@ -266,6 +266,7 @@ def test_validation_loader_defaults_to_the_complete_file(tmp_path, monkeypatch):
             "post_text": [],
             "table": [],
             "exe_ans": "1",
+            "program": "divide(1, 1)",
         }
         for index in range(3)
     ]
@@ -289,6 +290,7 @@ def test_validation_sampling_is_reproducible_and_id_based(tmp_path, monkeypatch)
             "post_text": [],
             "table": [],
             "exe_ans": "1",
+            "program": "divide(1, 1)",
         }
         for index in range(10)
     ]
@@ -316,6 +318,7 @@ def test_validation_loader_rejects_duplicate_record_ids(tmp_path, monkeypatch):
         "post_text": [],
         "table": [],
         "exe_ans": "1",
+        "program": "divide(1, 1)",
     }
     path.write_text(
         json.dumps(record) + "\n" + json.dumps(record) + "\n",
@@ -324,4 +327,23 @@ def test_validation_loader_rejects_duplicate_record_ids(tmp_path, monkeypatch):
     monkeypatch.setattr(evaluator, "VALIDATION_PATH", path)
 
     with pytest.raises(ValueError, match="Duplicate validation record ID"):
+        load_validation_records()
+
+
+def test_validation_loader_rejects_a_record_without_a_gold_program(
+    tmp_path, monkeypatch
+):
+    path = tmp_path / "validation.jsonl"
+    record = {
+        "id": "no-program",
+        "question": "Question?",
+        "pre_text": [],
+        "post_text": [],
+        "table": [],
+        "exe_ans": "1",
+    }
+    path.write_text(json.dumps(record) + "\n", encoding="utf-8")
+    monkeypatch.setattr(evaluator, "VALIDATION_PATH", path)
+
+    with pytest.raises(ValueError, match=r"missing \['program'\]"):
         load_validation_records()
