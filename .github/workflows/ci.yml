@@ -9,6 +9,7 @@ on:
     branches:
       - main
       - "feat/**"
+      - "fix/**"
 
 permissions:
   contents: read
