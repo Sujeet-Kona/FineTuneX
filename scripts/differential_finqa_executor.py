@@ -60,7 +60,7 @@ def main() -> None:
     parser.add_argument(
         "--splits",
         nargs="+",
-        default=["train", "validation"],
+        default=["train", "validation", "test"],
         choices=["train", "validation", "test"],
     )
     parser.add_argument(
