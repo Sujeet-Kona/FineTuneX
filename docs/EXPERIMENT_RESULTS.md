@@ -572,14 +572,16 @@ clone used the same interpreter environment but its own source tree
 | Tokenized `manifest.json` | **Differs** (`a008de85…` vs the recorded `772cd348…`) for one transitive reason, below |
 | Base/adapter evaluation from the clone | **NOT RUN** — the inference step was already measured on the primary tree; re-running it in the clone would add no new evidence and costs about 47 minutes of MPS time |
 
-The manifest difference was isolated rather than waved away: of 6,235 leaf values in the
-prep manifest, exactly 12 differ (4 evidence-annotation counts × 3 splits), and in every
-case the clone has a number where the original has `null`. The on-disk original was
-produced by an earlier revision of `prepare_dataset.py`, before the evidence-annotation
-audit block existed. The tokenized manifest then differs only because it hashes that
-prep manifest (`dataset.source_manifest_sha256`: clone `5adf9d4b…`, original `fb21cba1…`)
-— 1 differing key out of 61. So the *records* reproduce byte-for-byte, and the only
-incompatibility is a recorded digest that transitively covers non-record metadata.
+The manifest difference was isolated rather than waved away: the prep manifests have
+6,237 leaf values on the primary tree and 6,249 in the clone, and every one of the 12
+extra leaves is the same block — `audit.splits.<split>.evidence_annotations`, four
+evidence-annotation counts per split. In the primary manifest that key is **absent**, not
+`null`: the on-disk original was produced by an earlier revision of `prepare_dataset.py`,
+before the evidence-annotation audit block existed. The tokenized manifest then differs
+only because it hashes that prep manifest (`dataset.source_manifest_sha256`: clone
+`5adf9d4b…`, original `fb21cba1…`) — 1 differing key out of 61. So the *records* reproduce
+byte-for-byte, and the only incompatibility is a recorded digest that transitively covers
+non-record metadata.
 
 The cross-check was executed in the clone rather than reasoned about: importing
 `validate_preprocessing_provenance()` from `/tmp/ft_clone/scripts` with `PROJECT_ROOT`
@@ -593,6 +595,43 @@ Practical consequence for a reviewer: a clean checkout regenerates the artifact 
 the evaluator checks, so evaluation is reproducible from tracked code plus the pinned
 dataset. Quoting `772cd348…` as a compatibility requirement across checkouts would be
 wrong; it identifies the specific run recorded here, not a stable content fingerprint.
+
+### Clean-room reproduction at the final HEAD
+
+The run above reused the existing interpreter environment and stopped at `5e8ea29`. The
+final check therefore used a **new clone plus a new virtualenv** on 2026-11-05, at
+`e87b4eb` (`/tmp/ft_clone_head`, `/tmp/ft_clone_env` from `python3.11` 3.11.18), installing
+only what the committed manifest promises: `pip install -e ".[ml,api,dev]"` exited 0 and
+resolved to the same versions as the primary tree for all 16 shared packages — torch
+2.15.0, transformers 5.22.1, peft 0.21.2, accelerate 1.15.0, datasets 4.8.5,
+huggingface-hub 1.33.0, scikit-learn 1.9.1, PyYAML 6.0.3, safetensors 0.8.0, fastapi
+0.162.0, uvicorn 0.54.0, prometheus-client 0.26.0, pytest 9.2.0, ruff 0.17.3, httpx
+0.28.1. MLflow was not installed (it is the optional `tracking` extra), so the two
+real-MLflow tests skipped as designed rather than failing: **429 passed, 2 skipped**.
+
+| Step in the clean environment | Result |
+|---|---|
+| Clone HEAD | `e87b4eb231879468ddf5252868c8d354f6efe0f0`, working tree clean, 94 tracked files |
+| `pytest -q` | **PASS** — 429 passed, 2 skipped, 1 warning |
+| `prepare_dataset.py` | **PASS** — 6,251 / 883 / 1,147, 0 removed |
+| Materialized splits | Identical to primary: `891f7f73…`, `8e564eb0…`, `35b9b2c0…` |
+| `preprocess_finqa.py` | **PASS** — 7,134 tokenized records |
+| Tokenized artifacts | Identical to primary: train `8809f4db…`, validation `4c322338…` |
+| `validate_preprocessing_provenance()` | **PASS** — no raise; `8e564eb0…` and `4c322338…` match |
+| `load_validation_records()` | **PASS** — 883 records, every one carrying `program` |
+| `inference_only_record()` keys | `id`, `post_text`, `pre_text`, `question`, `table` — no gold field |
+| Local-only inputs required | None beyond the pinned Hugging Face cache; `import finetunex` resolved inside the clone |
+
+Export parity was re-verified separately on the primary tree against the preserved
+`artifacts/exported/v4-pilot-32-merged`, using the in-tree prompt builder, the measured
+run's scope (`evidence_budget` 1024, `max_prompt_tokens` 1408, greedy, `max_new_tokens`
+128, MPS/float16) and two real validation records. The adapter and the merged model
+produced **byte-identical prompts, identical generated token IDs, identical decoded text
+and identical scores** on both: `JPM/2008/page_85.pdf-3` → `divide(136104, 88746)` =
+1.53364 (`wrong_answer`, matching the recorded base-vs-adapter artifact), and
+`AAPL/2004/page_36.pdf-2` → `subtract(27.5, 27.3)` = 0.2 (`correct`, and its prompt hash
+`b6931768…` equals the one recorded in both full runs). No artifact was regenerated or
+overwritten by this check.
 
 The paired statistics in this report (Wilson 95% intervals, the exact McNemar test on
 discordant pairs, the per-gold-operation and per-length breakdowns, the regression

@@ -133,6 +133,17 @@ The vendored execution oracle is based on `czyssrs/FinQA/code/evaluate/evaluate.
   passed (79 files), **431 tests passed** (430 before the loader's missing-`program`
   regression test was added; 428 before the two real-MLflow tests), 2 warnings (the
   Starlette deprecation plus an SQLAlchemy deprecation raised inside MLflow's own store).
+- Clean-room reproduction at the final HEAD `e87b4eb`, 2026-11-05: a new clone and a new
+  Python 3.11 virtualenv installed only `.[ml,api,dev]` from the committed `pyproject.toml`
+  (exit 0, same 16 shared package versions as the primary tree), ran **429 passed, 2
+  skipped** (the real-MLflow tests skip without the optional `tracking` extra), and
+  reproduced the materialized splits and both tokenized artifacts byte-identically, with
+  the evaluator provenance check passing inside the clone. Details in
+  `docs/EXPERIMENT_RESULTS.md`.
+- Export parity was re-verified on the preserved merged export against the adapter on two
+  real validation records: identical prompt bytes, identical generated token IDs, identical
+  decoded text and identical scores, with both prompt hashes matching the recorded full-run
+  predictions.
 
 There are 26 test files in the current repository tree. CI tests are synthetic/offline tests; they do not establish correctness on the pinned downloaded dataset or MPS hardware. The full 883-example MPS runs and the 7,134-record gold audit are the checks that exercise real data and real hardware.
 
@@ -171,13 +182,15 @@ There are 26 test files in the current repository tree. CI tests are synthetic/o
   Validation status above). Still open: no test-split run, and no adapter trained at a
   realistic budget, so no model-quality claim exists.
 - Adapter packaging, deterministic inference and the final comparison are done and
-  evidenced. ~~Fresh-clone reproduction is NOT RUN~~ Done on 2026-11-05: a clean
+  evidenced. ~~Fresh-clone reproduction is NOT RUN~~ Done on 2026-11-05, twice: a clean
   `file://` clone of `5e8ea29` re-ran the test suite, `prepare_dataset.py` and
-  `preprocess_finqa.py`, and produced byte-identical materialized splits and
-  byte-identical tokenized train/validation artifacts. The tokenized `manifest.json`
+  `preprocess_finqa.py`, and a second clean clone at the final HEAD `e87b4eb` repeated it
+  inside a new virtualenv built only from the committed manifests. Both produced
+  byte-identical materialized splits and byte-identical tokenized train/validation
+  artifacts. The tokenized `manifest.json`
   hash does differ, and the difference was isolated to 12 audit counters that only the
   newer script revision writes, plus the one digest key that covers them. Inference was
-  not re-run in the clone. `artifacts/` and `experiments/` evidence remains gitignored,
+  not re-run in either clone. `artifacts/` and `experiments/` evidence remains gitignored,
   so it still does not travel with the repository. See the Fresh-clone reproduction
   section of `docs/EXPERIMENT_RESULTS.md`.
 
