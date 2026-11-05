@@ -183,6 +183,7 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
         "id": example_id,
         "program": record.get("program"),
         "program_re": record.get("program_re"),
+        "raw_steps": record.get("steps"),
         "answer": record.get("answer"),
         "exe_ans": record.get("exe_ans"),
         "flags": [],
@@ -193,10 +194,10 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
     except (FinQAProgramParseError, TypeError) as exc:
         result.update({"program_status": "parse_error", "program_error": str(exc)})
         result["flags"].append("program_parse_error")
-        return result
+        result["steps_audit"] = {\n            "status": "not_checked",\n            "issues": ["program_parse_error"],\n        }\n        result["classification"] = "requires_manual_review"\n        return result
 
     result["program_step_count"] = len(steps)
-    table = record.get("table", [])
+    result["parsed_steps"] = [\n        {\n            "operation": step.operation,\n            "arg1": step.arg1,\n            "arg2": step.arg2,\n        }\n        for step in steps\n    ]\n    table = record.get("table", [])
     intermediate: list[float | str] = []
     try:
         for index, step in enumerate(steps):
@@ -267,7 +268,6 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
 
 def audit_files(paths: list[Path]) -> dict[str, Any]:
     """Audit JSONL splits and include file hashes for reproducibility."""
-    records_by_split: dict[str, list[dict[str, Any]]] = {}
     split_reports: dict[str, Any] = {}
     all_results: list[dict[str, Any]] = []
 
@@ -279,7 +279,6 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
             for line in raw.decode("utf-8").splitlines()
             if line.strip()
         ]
-        records_by_split[split] = records
         results = [audit_record(record) for record in records]
         all_results.extend(results)
         flag_counts: Counter[str] = Counter(
@@ -299,6 +298,32 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
             "records": results,
         }
 
+    category_counts = {
+        "exe_ans_disagreements": sum(
+            "program_exe_ans_disagreement" in item["flags"]
+            for item in all_results
+        ),
+        "likely_exe_ans_precision_or_format_issues": sum(
+            "likely_exe_ans_precision_or_format_issue" in item["flags"]
+            for item in all_results
+        ),
+        "human_answer_program_disagreements": sum(
+            "program_human_answer_disagreement" in item["flags"]
+            for item in all_results
+        ),
+        "step_annotation_issues": sum(
+            "steps_program_disagreement" in item["flags"]
+            for item in all_results
+        ),
+        "unexecutable_programs": sum(
+            any(
+                flag in item["flags"]
+                for flag in ("program_parse_error", "program_execution_error")
+            )
+            for item in all_results
+        ),
+    }
+
     return {
         "audit": "finqa_annotation_integrity",
         "schema_version": 1,
@@ -313,6 +338,7 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
             "ambiguous_human_answers": "flagged for manual review; never guessed",
         },
         "total_examples": len(all_results),
+        "category_counts": category_counts,
         "internally_consistent": sum(
             item["classification"] == "internally_consistent" for item in all_results
         ),
