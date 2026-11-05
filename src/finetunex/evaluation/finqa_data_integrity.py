@@ -370,7 +370,7 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
                 "scalar numeric; % normalized; magnitude units require manual review"
             ),
             "step_numeric_tolerance": (
-                "rounded at annotation precision; scientific notation uses 1e-5 tolerance"
+                "annotation precision; scientific tolerance 1e-5"
             ),
             "exe_ans_numeric_tolerance": (
                 "round computed final result to 5 decimals; compare exactly to exe_ans"
