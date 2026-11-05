@@ -3,7 +3,7 @@
 **Inspection date:** 2026-11-05  
 **Repository:** https://github.com/Sujeet-Kona/FineTuneX  
 **Inspected branch:** `fix/finqa-experiment-integrity`  
-**PR #6 head at this update:** `ba0747b2e5b941d8cf0dfd87e5162ea96d606b21`  
+**PR #6 head at this update:** `d873eaca37a66e0578e0b232c432ead67dbb1f8c`  
 **Base branch:** `feat/inference-independent-prompt-budget` (`6d3ca14a4c8c96ddfd187124976624661a2d31c0`)
 
 This is a read-only engineering assessment of the repository and its open pull-request stack, plus this state document. It does not claim that local model, dataset, or MPS workloads were executed.
