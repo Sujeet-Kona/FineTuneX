@@ -118,8 +118,17 @@ def _parse_human_answer(value: Any) -> tuple[float | None, str]:
     return number, "parsed"
 
 
-def _human_answer_matches(value: float, answer: str) -> bool:
-    """Compare a human answer at its displayed precision without guessing scale."""
+def _human_answer_matches(
+    value: float, answer: str, *, percentage_context: bool = False
+) -> bool:
+    """Compare at displayed precision while allowing either explicit percent scale.
+
+    FinQA programs may return a ratio (0.28) or percentage points (28.0), for
+    example after an explicit multiply-by-100 step. A percent sign in the
+    human answer therefore cannot determine the program's output scale alone.
+    An unmarked answer is interpreted as percentage points only when the
+    question or recorded final step explicitly establishes percentage context.
+    """
     match = _ANSWER.fullmatch(answer.strip())
     if match is None:
         return False
@@ -130,13 +139,20 @@ def _human_answer_matches(value: float, answer: str) -> bool:
         if "." in number_text
         else 0
     )
-    is_percentage = (unit or "").lower() == "%"
-    actual = value * 100 if is_percentage else value
-    parsed, status = _parse_human_answer(answer)
-    if status != "parsed" or parsed is None:
+    try:
+        expected = parse_number(number_text.replace(",", ""))
+    except FinQAExecutionError:
         return False
-    expected = parsed * 100 if is_percentage else parsed
-    return round(actual, decimal_places) == round(expected, decimal_places)
+
+    is_percentage = (unit or "").lower() == "%"
+    candidates = [value, value * 100] if is_percentage else [value]
+    if percentage_context and not is_percentage:
+        candidates.append(value * 100)
+
+    return any(
+        round(candidate, decimal_places) == round(expected, decimal_places)
+        for candidate in candidates
+    )
 
 
 def _normalize_program_atom(
@@ -468,8 +484,17 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
             result["human_answer_match"] = None
             result["flags"].append("human_answer_requires_manual_review")
         else:
+            steps = record.get("steps", {})
+            step_results = steps.get("res", []) if isinstance(steps, dict) else []
+            percentage_context = (
+                "percent" in str(record.get("question", "")).casefold()
+                or "percentage" in str(record.get("question", "")).casefold()
+                or any("%" in str(item) for item in step_results)
+            )
             answer_match = _human_answer_matches(
-                computed, str(record.get("answer", ""))
+                computed,
+                str(record.get("answer", "")),
+                percentage_context=percentage_context,
             )
             result["human_answer_match"] = answer_match
             if not answer_match:
@@ -562,7 +587,7 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
             "source_records_modified": False,
             "automatic_exclusions": 0,
             "human_answer_parser": (
-                "scalar numeric; % normalized; magnitude units require manual review"
+                "scalar numeric; explicit percentages allow ratio or percentage-point program output; unmarked values use percentage-point scale only with question/step context; magnitude units require manual review"
             ),
             "step_numeric_comparison": (
                 "plain numbers rounded to displayed decimal precision; percentage "
