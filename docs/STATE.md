@@ -68,7 +68,7 @@ The vendored execution oracle is based on `czyssrs/FinQA/code/evaluate/evaluate.
 - Local Mac validation at `a41b85c`: `ruff check .` passed, `ruff format --check .` passed, **341 tests passed**, 1 Starlette deprecation warning.
 - Official executor differential: all 8,281 examples across train (6,251), validation (883), and test (1,147) matched the vendored official evaluator; zero differences.
 - Full annotation audit generated locally: 8,281 examples; 6,559 internally consistent; 1,722 require manual review. Flag counts: 640 `exe_ans` disagreements, 479 cases where the human answer agrees despite an `exe_ans` disagreement, 893 human-answer/program disagreements, 626 confirmed step mismatches, 345 ambiguous step annotations, and zero unexecutable programs or `program_re` structural failures.
-- Representative samples confirm the percentage fix for IPG and LLY while preserving the genuine ANSS program/answer mismatch. The precision/format label is being replaced with an evidence-limited diagnostic name; the 479 records remain manual-review cases.
+- Representative samples confirm the percentage fix for IPG and LLY while preserving the genuine ANSS program/answer mismatch. The former precision/format label has been replaced with the evidence-limited diagnostic name `exe_ans_disagreement_human_answer_consistent`; all 479 records remain manual-review cases.
 - The full sample export and broader manual review are not yet complete. The full audit has not been frozen.
 - No source data has been edited.
 
