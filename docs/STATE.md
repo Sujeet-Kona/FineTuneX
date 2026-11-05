@@ -49,7 +49,7 @@ Actual local split counts and ID digests: **MISSING**.
 
 1. **Annotation audit syntax:** the literal backslash-n source corruption was repaired.
 2. **Step operation labels:** source labels `minus1-1` and `compare_larger1-4` are normalized to DSL operations `subtract` and `greater`.
-3. **Step-result precision:** numeric step annotations are compared at their displayed precision; percentages are compared in percentage units.
+3. **Step-result classification:** plain numeric step annotations are compared at displayed decimal precision; table-operation aliases are normalized in context. Percentage annotations that do not match ratio-to-percent semantics are marked ambiguous, not confirmed mismatches.
 4. **Human answers:** answers are compared at displayed precision. Magnitude suffixes (thousand/million/billion) are not automatically rescaled; they require unit-context review.
 5. **Parse-error handling:** malformed programs are reported as manual-review records rather than crashing the whole audit.
 6. **Diagnostics:** audit JSON retains raw `program`, `program_re`, raw `steps`, parsed steps, intermediate results, and per-record flags.
@@ -70,6 +70,7 @@ The vendored execution oracle is based on `czyssrs/FinQA/code/evaluate/evaluate.
 - Local Mac `ruff check`, `ruff format --check`, and `pytest`: **MISSING**.
 - Official differential over the 8,281 source records: **MISSING**.
 - Full annotation audit and reviewed real-record samples: **MISSING**.
+- The checker now separates confirmed step mismatches from ambiguous percentage annotations; the latest checker changes still require CI confirmation and a fresh local full-split audit.
 - No source data has been edited.
 
 There are 23 test files in the current repository tree. CI tests are synthetic/offline tests; they do not establish correctness on the pinned downloaded dataset or MPS hardware.
