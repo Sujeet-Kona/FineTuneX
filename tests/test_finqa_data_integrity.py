@@ -48,6 +48,16 @@ def test_detects_program_answer_conflict():
 
 
 def test_exe_ans_disagreement_with_matching_human_answer_stays_manual_review():
+    result = audit_record(_record(exe_ans="151"))
+    assert "program_exe_ans_disagreement" in result["flags"]
+    assert "exe_ans_disagreement_human_answer_consistent" in result["flags"]
+    assert result["human_answer_match"] is True
+    assert result["classification"] == "requires_manual_review"
+
+
+def test_exe_ans_display_precision_is_not_a_disagreement():
+    # Real FinQA record: exe_ans is stored at six significant digits, so the
+    # rendered form differs from repr(round(value, 5)) without being wrong.
     result = audit_record(
         _record(
             program="multiply(423897556, 87.32)",
@@ -61,10 +71,8 @@ def test_exe_ans_disagreement_with_matching_human_answer_stays_manual_review():
             },
         )
     )
-    assert "program_exe_ans_disagreement" in result["flags"]
-    assert "exe_ans_disagreement_human_answer_consistent" in result["flags"]
-    assert result["human_answer_match"] is True
-    assert result["classification"] == "requires_manual_review"
+    assert result["exe_ans_match"] is True
+    assert "program_exe_ans_disagreement" not in result["flags"]
 
 
 def test_percentage_human_answer_is_normalized():

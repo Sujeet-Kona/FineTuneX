@@ -14,6 +14,10 @@ from collections import Counter
 from pathlib import Path
 from typing import Any
 
+from finetunex.evaluation.answer_comparison import (
+    ANSWER_COMPARISON_RULE,
+    format_significant,
+)
 from finetunex.evaluation.finqa_executor import (
     FinQAExecutionError,
     _execute_step,
@@ -459,14 +463,18 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
         else:
             try:
                 expected_number = parse_number(str(expected))
-                # The official evaluator rounds only the computed final result.
-                exe_match = round(computed, 5) == expected_number
-                result["exe_ans_match"] = exe_match
-                if not exe_match:
-                    result["flags"].append("program_exe_ans_disagreement")
             except FinQAExecutionError:
                 result["exe_ans_match"] = False
                 result["flags"].append("exe_ans_unparseable")
+            else:
+                # exe_ans is stored at six significant digits, so the computed
+                # result must be rendered the same way before comparing.
+                exe_match = format_significant(round(computed, 5)) == (
+                    format_significant(expected_number)
+                )
+                result["exe_ans_match"] = exe_match
+                if not exe_match:
+                    result["flags"].append("program_exe_ans_disagreement")
 
         answer_number, answer_status = _parse_human_answer(record.get("answer"))
         result["human_answer_parse_status"] = answer_status
@@ -601,7 +609,8 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
                 "ambiguous, never auto-converted to another scale"
             ),
             "exe_ans_numeric_tolerance": (
-                "round computed final result to 5 decimals; compare exactly to exe_ans"
+                "round computed final result to 5 decimals, then compare against "
+                f"exe_ans at six significant digits ({ANSWER_COMPARISON_RULE})"
             ),
             "ambiguous_human_answers": "flagged for manual review; never guessed",
         },

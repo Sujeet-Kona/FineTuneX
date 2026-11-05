@@ -12,7 +12,7 @@ services:
       HF_HUB_OFFLINE: "1"
       TRANSFORMERS_OFFLINE: "1"
     volumes:
-      - ${FINETUNEX_CHECKPOINT:?Set FINETUNEX_CHECKPOINT to a trained v3 adapter}:/models/adapter:ro
+      - ${FINETUNEX_CHECKPOINT:?Set FINETUNEX_CHECKPOINT to a trained v4 adapter}:/models/adapter:ro
       - ${HF_CACHE_PATH:?Set HF_CACHE_PATH to the Hugging Face cache directory}:/models/huggingface:ro
     deploy:
       resources:

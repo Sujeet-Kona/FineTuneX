@@ -6,9 +6,18 @@ import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from threading import Lock
+from time import perf_counter
 from typing import Any
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import Response
+from prometheus_client import (
+    CONTENT_TYPE_LATEST,
+    CollectorRegistry,
+    Counter,
+    Histogram,
+    generate_latest,
+)
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from finetunex.config import load_yaml_config
@@ -32,6 +41,11 @@ MODEL_CONFIG_PATH = PROJECT_ROOT / "configs/model.yaml"
 TRAINING_CONFIG_PATH = PROJECT_ROOT / "configs/training.yaml"
 PREPROCESSING_CONFIG_PATH = PROJECT_ROOT / "configs/preprocessing.yaml"
 
+# FinQA passages reach 260 rows in the pinned test split, so this bound only has
+# to reject absurd payloads; the evidence token budget does the real truncation.
+MAX_PASSAGE_ROWS = 400
+MAX_TABLE_ROWS = 100
+
 
 class FinQARequest(BaseModel):
     """Inference-only request schema; gold labels are not accepted."""
@@ -40,9 +54,9 @@ class FinQARequest(BaseModel):
 
     id: str = Field(default="api-request", min_length=1, max_length=200)
     question: str = Field(min_length=1, max_length=4000)
-    pre_text: list[str] = Field(default_factory=list, max_length=40)
-    post_text: list[str] = Field(default_factory=list, max_length=40)
-    table: list[list[str]] = Field(default_factory=list, max_length=100)
+    pre_text: list[str] = Field(default_factory=list, max_length=MAX_PASSAGE_ROWS)
+    post_text: list[str] = Field(default_factory=list, max_length=MAX_PASSAGE_ROWS)
+    table: list[list[str]] = Field(default_factory=list, max_length=MAX_TABLE_ROWS)
 
     @field_validator("pre_text", "post_text")
     @classmethod
@@ -123,6 +137,47 @@ def create_app(
         description="Inference API for the FineTuneX FinQA reasoning adapter.",
         lifespan=lifespan,
     )
+
+    metrics_registry = CollectorRegistry()
+    request_counter = Counter(
+        "finetunex_http_requests_total",
+        "Total HTTP requests handled by FineTuneX.",
+        labelnames=("method", "route", "status_code"),
+        registry=metrics_registry,
+    )
+    request_latency = Histogram(
+        "finetunex_http_request_duration_seconds",
+        "HTTP request latency in seconds.",
+        labelnames=("method", "route"),
+        registry=metrics_registry,
+    )
+    application.state.metrics_registry = metrics_registry
+
+    @application.middleware("http")
+    async def observe_http_requests(request: Request, call_next):
+        if request.url.path == "/metrics":
+            return await call_next(request)
+
+        started_at = perf_counter()
+        route_label = "unmatched"
+        status_code = "500"
+        try:
+            response = await call_next(request)
+            route = request.scope.get("route")
+            route_label = getattr(route, "path", "unmatched")
+            status_code = str(response.status_code)
+            return response
+        finally:
+            elapsed = perf_counter() - started_at
+            request_counter.labels(request.method, route_label, status_code).inc()
+            request_latency.labels(request.method, route_label).observe(elapsed)
+
+    @application.get("/metrics", include_in_schema=False)
+    def metrics() -> Response:
+        return Response(
+            content=generate_latest(metrics_registry),
+            media_type=CONTENT_TYPE_LATEST,
+        )
 
     @application.get("/health/live")
     def liveness() -> dict[str, str]:

@@ -21,6 +21,7 @@ sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from finetunex.artifacts.checkpoint import save_best_checkpoint  # noqa: E402
 from finetunex.config import load_yaml_config  # noqa: E402
+from finetunex.tracking.mlflow_tracker import MLflowTracker  # noqa: E402
 from finetunex.training.data import FinQACollator, FinQADataset  # noqa: E402
 from finetunex.training.engine import evaluate, train_one_epoch  # noqa: E402
 from finetunex.training.model import load_training_components  # noqa: E402
@@ -282,6 +283,9 @@ def main() -> int:
     model_config = load_yaml_config(PROJECT_ROOT / "configs/model.yaml")
     training_config = load_yaml_config(PROJECT_ROOT / "configs/training.yaml")
     preprocessing_config = load_yaml_config(PROJECT_ROOT / "configs/preprocessing.yaml")
+    experiment_config = load_yaml_config(PROJECT_ROOT / "configs/experiment.yaml")[
+        "experiment"
+    ]
 
     dataset_settings = dataset_config["dataset"]
     model_settings = model_config["model"]
@@ -399,11 +403,13 @@ def main() -> int:
     global_step = 0
     best_validation_loss = float("inf")
 
+    tracking_config_path = PROJECT_ROOT / "configs/experiment.yaml"
     config_paths = (
         PROJECT_ROOT / "configs/dataset.yaml",
         PROJECT_ROOT / "configs/model.yaml",
         PROJECT_ROOT / "configs/training.yaml",
         PROJECT_ROOT / "configs/preprocessing.yaml",
+        tracking_config_path,
     )
 
     config_hashes = {path.name: sha256_file(path) for path in config_paths}
@@ -429,133 +435,162 @@ def main() -> int:
         args.max_validation_batches or len(validation_loader),
     )
 
-    for epoch in range(1, epochs + 1):
-        print(f"\n===== EPOCH {epoch}/{epochs} =====")
-
-        train_batches = (
-            islice(train_loader, args.max_train_batches)
-            if args.max_train_batches is not None
-            else train_loader
-        )
-
-        train_metrics = train_one_epoch(
-            components.model,
-            train_batches,
-            optimizer,
-            components.trainable_parameters,
-            device=components.device,
-            gradient_accumulation_steps=accumulation_steps,
-            max_grad_norm=1.0,
-        )
-
-        global_step += train_metrics.optimizer_steps
-
-        validation_batches = (
-            islice(validation_loader, args.max_validation_batches)
-            if args.max_validation_batches is not None
-            else validation_loader
-        )
-
-        validation_metrics = evaluate(
-            components.model,
-            validation_batches,
-            device=components.device,
-        )
-
-        epoch_record = {
-            "epoch": epoch,
-            "global_step": global_step,
-            "train_loss": train_metrics.mean_loss,
-            "train_supervised_tokens": train_metrics.supervised_tokens,
-            "train_microbatches": train_metrics.microbatches,
-            "train_optimizer_steps": train_metrics.optimizer_steps,
-            "mean_gradient_norm": train_metrics.mean_gradient_norm,
-            "validation_loss": validation_metrics.mean_loss,
-            "validation_supervised_tokens": validation_metrics.supervised_tokens,
-            "validation_microbatches": validation_metrics.microbatches,
-        }
-
-        history.append(epoch_record)
-
-        print(f"Train loss:      {train_metrics.mean_loss:.6f}")
-        print(f"Validation loss: {validation_metrics.mean_loss:.6f}")
-        print("Optimizer steps:", train_metrics.optimizer_steps)
-        print("Gradient norm:", train_metrics.mean_gradient_norm)
-
-        metadata = {
-            "run_type": (
-                "limited_smoke"
-                if args.max_train_batches is not None
-                or args.max_validation_batches is not None
-                else "full_dataset"
-            ),
-            "checkpoint_selection_metric": "token_weighted_validation_loss",
+    tracker = MLflowTracker(experiment_config, PROJECT_ROOT)
+    tracker.start(
+        run_name=f"finqa-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}",
+        params={
             "model": model_settings["name"],
             "model_revision": model_settings["revision"],
-            "tokenizer": model_settings["tokenizer"]["name"],
-            "tokenizer_revision": model_settings["tokenizer"]["revision"],
             "dataset": dataset_settings["name"],
-            "prompt_version": manifest["preprocessing"]["prompt_version"],
-            "dataset_repository": dataset_settings["source"]["repository"],
             "dataset_revision": dataset_settings["source"]["revision"],
-            "preprocessing_manifest_sha256": sha256_file(manifest_path),
-            "train_artifact_sha256": sha256_file(train_path),
-            "validation_artifact_sha256": sha256_file(validation_path),
-            "configuration_sha256": config_hashes,
-            "package_versions": package_versions(),
-            "device": str(components.device),
-            "base_dtype": model_settings["loading"]["dtype"],
             "seed": seed,
-            "epoch": epoch,
-            "global_step": global_step,
-            "validation_loss": validation_metrics.mean_loss,
-            "trainable_parameter_count": components.trainable_parameter_count,
-            "total_parameter_count": components.total_parameter_count,
-            "training_config": {
-                "method": training_settings["method"],
-                "epochs": epochs,
-                "learning_rate": learning_rate,
-                "weight_decay": training_settings.get("weight_decay", 0.01),
-                "batch_size": batch_size,
-                "gradient_accumulation_steps": accumulation_steps,
-                "max_sequence_length": max_sequence_length,
-                "max_grad_norm": 1.0,
-                "lora": training_settings["lora"],
-            },
-            "evaluation_scope": {
-                "train_batches_limited": args.max_train_batches is not None,
-                "validation_batches_limited": args.max_validation_batches is not None,
-                "max_train_batches_per_epoch": args.max_train_batches,
-                "max_validation_batches_per_epoch": args.max_validation_batches,
-                "training_examples_per_epoch": processed_example_count(
-                    len(train_dataset),
-                    train_metrics.microbatches,
-                    batch_size,
+            "epochs": epochs,
+            "batch_size": batch_size,
+            "gradient_accumulation_steps": accumulation_steps,
+            "learning_rate": learning_rate,
+            "device": str(components.device),
+            "run_type": "limited_smoke"
+            if args.max_train_batches or args.max_validation_batches
+            else "full_dataset",
+        },
+        config_paths=config_paths,
+    )
+
+    run_status = "FAILED"
+    try:
+        for epoch in range(1, epochs + 1):
+            print(f"\n===== EPOCH {epoch}/{epochs} =====")
+
+            train_batches = (
+                islice(train_loader, args.max_train_batches)
+                if args.max_train_batches is not None
+                else train_loader
+            )
+
+            train_metrics = train_one_epoch(
+                components.model,
+                train_batches,
+                optimizer,
+                components.trainable_parameters,
+                device=components.device,
+                gradient_accumulation_steps=accumulation_steps,
+                max_grad_norm=1.0,
+            )
+
+            global_step += train_metrics.optimizer_steps
+
+            validation_batches = (
+                islice(validation_loader, args.max_validation_batches)
+                if args.max_validation_batches is not None
+                else validation_loader
+            )
+
+            validation_metrics = evaluate(
+                components.model,
+                validation_batches,
+                device=components.device,
+            )
+
+            epoch_record = {
+                "epoch": epoch,
+                "global_step": global_step,
+                "train_loss": train_metrics.mean_loss,
+                "train_supervised_tokens": train_metrics.supervised_tokens,
+                "train_microbatches": train_metrics.microbatches,
+                "train_optimizer_steps": train_metrics.optimizer_steps,
+                "mean_gradient_norm": train_metrics.mean_gradient_norm,
+                "validation_loss": validation_metrics.mean_loss,
+                "validation_supervised_tokens": validation_metrics.supervised_tokens,
+                "validation_microbatches": validation_metrics.microbatches,
+            }
+
+            history.append(epoch_record)
+            tracker.log_epoch(epoch_record)
+
+            print(f"Train loss:      {train_metrics.mean_loss:.6f}")
+            print(f"Validation loss: {validation_metrics.mean_loss:.6f}")
+            print("Optimizer steps:", train_metrics.optimizer_steps)
+            print("Gradient norm:", train_metrics.mean_gradient_norm)
+
+            metadata = {
+                "run_type": (
+                    "limited_smoke"
+                    if args.max_train_batches is not None
+                    or args.max_validation_batches is not None
+                    else "full_dataset"
                 ),
-                "validation_examples": processed_example_count(
-                    len(validation_dataset),
-                    validation_metrics.microbatches,
-                    batch_size,
-                ),
-            },
-            "created_at_utc": datetime.now(UTC).isoformat(),
-        }
+                "checkpoint_selection_metric": "token_weighted_validation_loss",
+                "model": model_settings["name"],
+                "model_revision": model_settings["revision"],
+                "tokenizer": model_settings["tokenizer"]["name"],
+                "tokenizer_revision": model_settings["tokenizer"]["revision"],
+                "dataset": dataset_settings["name"],
+                "prompt_version": manifest["preprocessing"]["prompt_version"],
+                "dataset_repository": dataset_settings["source"]["repository"],
+                "dataset_revision": dataset_settings["source"]["revision"],
+                "preprocessing_manifest_sha256": sha256_file(manifest_path),
+                "train_artifact_sha256": sha256_file(train_path),
+                "validation_artifact_sha256": sha256_file(validation_path),
+                "configuration_sha256": config_hashes,
+                "package_versions": package_versions(),
+                "device": str(components.device),
+                "base_dtype": model_settings["loading"]["dtype"],
+                "seed": seed,
+                "epoch": epoch,
+                "global_step": global_step,
+                "validation_loss": validation_metrics.mean_loss,
+                "trainable_parameter_count": components.trainable_parameter_count,
+                "total_parameter_count": components.total_parameter_count,
+                "training_config": {
+                    "method": training_settings["method"],
+                    "epochs": epochs,
+                    "learning_rate": learning_rate,
+                    "weight_decay": training_settings.get("weight_decay", 0.01),
+                    "batch_size": batch_size,
+                    "gradient_accumulation_steps": accumulation_steps,
+                    "max_sequence_length": max_sequence_length,
+                    "max_grad_norm": 1.0,
+                    "lora": training_settings["lora"],
+                },
+                "evaluation_scope": {
+                    "train_batches_limited": args.max_train_batches is not None,
+                    "validation_batches_limited": args.max_validation_batches
+                    is not None,
+                    "max_train_batches_per_epoch": args.max_train_batches,
+                    "max_validation_batches_per_epoch": args.max_validation_batches,
+                    "training_examples_per_epoch": processed_example_count(
+                        len(train_dataset),
+                        train_metrics.microbatches,
+                        batch_size,
+                    ),
+                    "validation_examples": processed_example_count(
+                        len(validation_dataset),
+                        validation_metrics.microbatches,
+                        batch_size,
+                    ),
+                },
+                "created_at_utc": datetime.now(UTC).isoformat(),
+            }
 
-        saved = save_best_checkpoint(
-            output_dir,
-            components.model,
-            components.tokenizer,
-            metadata,
-            history,
-        )
+            saved = save_best_checkpoint(
+                output_dir,
+                components.model,
+                components.tokenizer,
+                metadata,
+                history,
+            )
 
-        if saved:
-            best_validation_loss = validation_metrics.mean_loss
-            print("Best checkpoint updated:", output_dir)
-        else:
-            print("Checkpoint unchanged; validation did not improve.")
+            if saved:
+                best_validation_loss = validation_metrics.mean_loss
+                print("Best checkpoint updated:", output_dir)
+            else:
+                print("Checkpoint unchanged; validation did not improve.")
 
-        print("Best validation loss:", f"{best_validation_loss:.6f}")
+            print("Best validation loss:", f"{best_validation_loss:.6f}")
+
+        run_status = "FINISHED"
+    finally:
+        tracker.finish(checkpoint_dir=output_dir, status=run_status)
 
     print("\n===== TRAINING COMPLETE =====")
     print("Best validation loss:", best_validation_loss)
