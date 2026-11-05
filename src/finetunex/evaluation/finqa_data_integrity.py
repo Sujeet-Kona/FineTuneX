@@ -366,9 +366,9 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
             "source_records_modified": False,
             "automatic_exclusions": 0,
             "human_answer_parser": (
-                "single numeric scalar with optional %, thousand, million, billion"
+                "scalar numeric; % normalized; magnitude units require manual review"
             ),
-            "step_numeric_tolerance": "relative 1e-5, absolute 1e-5",
+            "step_numeric_tolerance": "rounded at annotation precision; scientific notation uses 1e-5 tolerance",
             "exe_ans_numeric_tolerance": "exact after five-decimal rounding semantics",
             "ambiguous_human_answers": "flagged for manual review; never guessed",
         },

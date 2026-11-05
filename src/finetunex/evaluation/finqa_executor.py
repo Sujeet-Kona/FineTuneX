@@ -113,8 +113,9 @@ def _execute_step(
     operation = step.operation
 
     if operation.startswith("table_"):
-        # The official evaluator resolves intermediate references in row labels
-        # and ignores the second table-operation argument.
+        # This executor supports references in table row labels and ignores the
+        # second argument. The upstream evaluator has a bug in its reference
+        # branch; the official differential audit checks whether gold data uses it.
         row_label: float | str = step.arg1
         if "#" in step.arg1:
             reference_match = _REFERENCE_PATTERN.fullmatch(step.arg1)

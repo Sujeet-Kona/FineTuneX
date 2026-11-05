@@ -1,7 +1,7 @@
-"""Independent execution-semantics port for the upstream FinQA evaluator.
+"""Secondary reference-style executor for FinQA arithmetic programs.
 
-It reuses the validated project parser but separately implements arithmetic
-and table-cell behavior from FinQA's public evaluator. It audits gold programs.
+This is not the official evaluator oracle. Use official_finqa_oracle.py for
+upstream differential tests. This module remains a separate implementation.
 """
 
 from __future__ import annotations

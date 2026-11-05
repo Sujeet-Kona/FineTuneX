@@ -45,7 +45,7 @@ For transparent secondary metrics, FineTuneX will report both **overall** result
 3. Its recorded `steps.op`, `arg1`, `arg2`, and `res` agree with the linear gold program, applying the documented operation-name aliases and comparing numeric step results only at the precision actually recorded in the annotation.
 4. The human-readable `answer` can be parsed unambiguously under a documented normalization rule and agrees with the program result at its displayed precision. Percentage values are compared in percentage units. Magnitude suffixes (thousand/million/billion) require unit context and are not automatically rescaled.
 
-Ambiguous human answers are not guessed. Such examples remain in the overall set but are not counted in the clean diagnostic subset until manually adjudicated. The clean subset is for stratified reporting only; it is not a filtered training dataset.
+Ambiguous human answers are not guessed. Such examples remain in the overall set but are not counted in the clean diagnostic subset until manually adjudicated. Percentage values are normalized as ratios. Magnitude suffixes (thousand/million/billion) are not automatically rescaled because their units may already be represented in the table; they require manual unit-context review. The clean subset is for stratified reporting only; it is not a filtered training dataset.
 
 **Current clean-subset counts: MISSING.** The integrity checker has been repaired but the local audit has not yet been rerun and reviewed.
 
