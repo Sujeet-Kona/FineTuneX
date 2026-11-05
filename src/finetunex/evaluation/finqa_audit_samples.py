@@ -87,13 +87,9 @@ def _select_stratified(
         ranked = sorted(
             grouped[split],
             key=lambda item: hashlib.sha256(
-                (
-                    category
-                    + "\0"
-                    + split
-                    + "\0"
-                    + str(item["source_record"]["id"])
-                ).encode("utf-8")
+                (category + "\0" + split + "\0" + str(item["source_record"]["id"])).encode(
+                    "utf-8"
+                )
             ).hexdigest(),
         )
         selected.extend(ranked[: quotas[split]])
