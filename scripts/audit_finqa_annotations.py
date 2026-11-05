@@ -19,7 +19,10 @@ def main() -> None:
         "--source-dir",
         type=Path,
         default=Path("data/processed/finqa"),
-        help="Directory containing the original train.jsonl, validation.jsonl, and test.jsonl.",
+        help=(
+            "Directory containing the original train.jsonl, validation.jsonl, "
+            "and test.jsonl."
+        ),
     )
     parser.add_argument(
         "--output",
@@ -33,7 +36,11 @@ def main() -> None:
         source_dir = PROJECT_ROOT / source_dir
     output = args.output if args.output.is_absolute() else PROJECT_ROOT / args.output
 
-    paths = [\n        source_dir / "train.jsonl",\n        source_dir / "validation.jsonl",\n        source_dir / "test.jsonl",\n    ]
+    paths = [
+        source_dir / "train.jsonl",
+        source_dir / "validation.jsonl",
+        source_dir / "test.jsonl",
+    ]
     missing = [str(path) for path in paths if not path.is_file()]
     if missing:
         parser.error("Missing source split(s): " + ", ".join(missing))
