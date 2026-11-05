@@ -85,9 +85,7 @@ def _new_bucket() -> dict[str, int]:
 
 def _finish_bucket(bucket: dict[str, int]) -> dict[str, Any]:
     gold_units = bucket["gold_text_units"] + bucket["gold_table_units"]
-    retrieved_units = (
-        bucket["retrieved_text_units"] + bucket["retrieved_table_units"]
-    )
+    retrieved_units = bucket["retrieved_text_units"] + bucket["retrieved_table_units"]
     examples_with_gold = bucket["examples_with_gold_evidence"]
     return {
         **bucket,
