@@ -24,7 +24,7 @@ from finetunex.evaluation.finqa_parser import (
     parse_program,
 )
 
-_STEP_OP = re.compile(r"^([a-z_]+)\\d+-\\d+$")
+_STEP_OP = re.compile(r"^([a-z_]+)\d+-\d+$")
 _ANSWER = re.compile(
     r"^\\s*[$€£]?\\s*([-+]?(?:\\d[\\d,]*\\.?\\d*|\\.\\d+))"
     r"\\s*(%|million|billion|thousand)?\\s*$",
