@@ -10,7 +10,6 @@ import re
 from collections import defaultdict
 from typing import Any
 
-
 _TEXT_KEY = re.compile(r"text_(-?\d+)\Z")
 _TABLE_KEY = re.compile(r"table_(\d+)\Z")
 
