@@ -160,7 +160,8 @@ def test_detects_awk_program_steps_and_answer_conflict():
             },
         )
     )
-    assert "steps_program_disagreement" in result["flags"]
+    assert "steps_annotation_ambiguous" in result["flags"]
+    assert "steps_program_disagreement" not in result["flags"]
     assert "program_human_answer_disagreement" in result["flags"]
 
 
