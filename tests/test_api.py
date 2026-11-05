@@ -47,6 +47,17 @@ def test_health_endpoints_report_liveness_and_readiness(components):
         assert client.get("/health/ready").json() == {"status": "ready"}
 
 
+def test_prometheus_metrics_expose_low_cardinality_request_labels(components):
+    with TestClient(create_app(components)) as client:
+        assert client.get("/health/live").status_code == 200
+        response = client.get("/metrics")
+
+    assert response.status_code == 200
+    assert "finetunex_http_requests_total" in response.text
+    assert 'method="GET",route="/health/live",status_code="200"' in response.text
+    assert "finetunex_http_request_duration_seconds" in response.text
+
+
 def test_score_returns_program_and_executed_value(monkeypatch, components):
     monkeypatch.setattr(
         api_module,
