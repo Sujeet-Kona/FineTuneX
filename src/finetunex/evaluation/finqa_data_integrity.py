@@ -86,12 +86,12 @@ def _compare_step_annotations(
     for index, step in enumerate(program_steps):
         op_annotation = arrays["op"][index]
         op_match = (\n            _STEP_OP.fullmatch(op_annotation)\n            if isinstance(op_annotation, str)\n            else None\n        )
-        if op_match is None or op_match.group(1) != step.operation:
+        annotated_operation = (\n            _STEP_OPERATION_ALIASES.get(op_match.group(1), op_match.group(1))\n            if op_match is not None\n            else None\n        )\n        if annotated_operation != step.operation:
             issues.append({
                 "step": index,
                 "kind": "operation_mismatch",
                 "program": step.operation,
-                "annotated": op_annotation,
+                "annotated": op_annotation,\n                "normalized_annotation": annotated_operation,
             })
 
         for field, expected in (("arg1", step.arg1), ("arg2", step.arg2)):
