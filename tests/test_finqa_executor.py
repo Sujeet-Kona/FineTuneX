@@ -65,7 +65,6 @@ def test_rounds_final_numeric_result_to_five_decimals():
         ("table_average", 20),
     ],
 )
-
 def test_table_operations(operation, expected):
     table = [["revenue", "$ 10", "$ 20", "$ 30"]]
     assert execute_program(f"{operation}(revenue, none)", table) == expected
@@ -106,7 +105,6 @@ def test_table_operation_can_be_followed_by_arithmetic():
         "table_sum(missing, none)",
     ],
 )
-
 def test_invalid_execution_raises_error(program):
     table = [["revenue", "10", "20"]]
     with pytest.raises(FinQAExecutionError):

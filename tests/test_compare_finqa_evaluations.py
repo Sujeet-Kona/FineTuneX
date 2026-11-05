@@ -52,7 +52,6 @@ def make_rows():
     ]
 
 
-
 def test_compares_only_identical_prompted_examples():
     result = compare(
         make_summary("base_model"),
@@ -142,8 +141,6 @@ def test_rejects_validation_sample_method_mismatch():
             adapter_summary,
             make_rows(),
         )
-
-
 
 
 def test_rejects_validation_sample_seed_mismatch():

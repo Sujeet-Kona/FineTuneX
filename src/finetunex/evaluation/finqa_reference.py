@@ -125,9 +125,7 @@ def reference_execute_program(
             elif operation == "greater":
                 result = "yes" if left > right else "no"
             else:
-                raise ReferenceExecutionError(
-                    f"Unsupported operation: {operation}"
-                )
+                raise ReferenceExecutionError(f"Unsupported operation: {operation}")
 
         if isinstance(result, complex):
             raise ReferenceExecutionError(
