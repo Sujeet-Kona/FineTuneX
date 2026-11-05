@@ -105,3 +105,57 @@ def test_detects_program_step_mismatch_in_anomaly_examples():
     )
     assert "steps_program_disagreement" in result["flags"]
     assert "program_human_answer_disagreement" in result["flags"]
+
+\n\ndef test_text_result_is_compared_without_numeric_parsing():
+    result = audit_record(
+        _record(
+            program="greater(10, 5)",
+            exe_ans="yes",
+            answer="yes",
+            steps={
+                "op": ["greater0-0"],
+                "arg1": ["10"],
+                "arg2": ["5"],
+                "res": ["yes"],
+            },
+        )
+    )
+    assert result["exe_ans_match"] is True
+    assert result["human_answer_match"] is True
+    assert result["classification"] == "internally_consistent"
+
+
+def test_detects_hig_sign_conflict():
+    result = audit_record(
+        _record(
+            program="multiply(306.7, -8.99)",
+            exe_ans="-2757.23",
+            answer="2757.2",
+            steps={
+                "op": ["multiply1-1"],
+                "arg1": ["306.7"],
+                "arg2": ["-8.99"],
+                "res": ["2757.2"],
+            },
+        )
+    )
+    assert "steps_program_disagreement" in result["flags"]
+    assert "program_human_answer_disagreement" in result["flags"]
+
+
+def test_detects_awk_program_steps_and_answer_conflict():
+    result = audit_record(
+        _record(
+            program="multiply(11.4, const_1000000), multiply(3158226, #0)",
+            exe_ans="3.60038e+13",
+            answer="28%",
+            steps={
+                "op": ["multiply2-1", "multiply2-2"],
+                "arg1": ["11.4", "3158226"],
+                "arg2": ["const_1000000", "#0"],
+                "res": ["11400000", "28%"],
+            },
+        )
+    )
+    assert "steps_program_disagreement" in result["flags"]
+    assert "program_human_answer_disagreement" in result["flags"]
