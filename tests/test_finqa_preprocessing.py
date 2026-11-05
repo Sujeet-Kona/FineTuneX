@@ -252,8 +252,8 @@ def test_generation_prompt_respects_disabled_thinking_flag():
     prompt = build_prompt(
         "What was revenue?",
         [],
-        "Year | Revenue\\n2023 | 125",
+        "Year | Revenue\n2023 | 125",
         FakeTokenizer(),
     )
     assert "<think>" not in prompt
-    assert prompt.endswith("<|im_start|>assistant\\n")
+    assert prompt.endswith("<|im_start|>assistant\n")
