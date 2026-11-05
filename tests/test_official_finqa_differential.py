@@ -40,3 +40,10 @@ def test_official_oracle_marks_missing_table_row_invalid():
         [["revenue", "10", "20"]],
     )
     assert invalid == 1
+
+
+def test_empty_table_sum_matches_official_evaluator():
+    table = [["revenue"]]
+    invalid, expected = official_eval_program("table_sum(revenue, none)", table)
+    assert invalid == 0
+    assert execute_program("table_sum(revenue, none)", table) == expected == 0
