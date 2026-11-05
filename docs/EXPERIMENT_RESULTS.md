@@ -546,6 +546,47 @@ ruff check . && ruff format --check . && pytest -q
 `--overwrite` is required to regenerate an existing evaluation directory; the
 scripts refuse to replace prior results by default.
 
+## Fresh-clone reproduction
+
+Executed on 2026-11-05 in `/tmp/ft_clone`, cloned from the local repository over
+`file://` at commit `5e8ea29` (94 tracked files, `.git` 468 KB, largest tracked blob
+33 KB — this document; no weights, datasets or generated artifacts are tracked). The
+clone used the same interpreter environment but its own source tree
+(`PYTHONPATH=/tmp/ft_clone/src`, verified: `import finetunex` resolves inside the clone).
+
+| Step | Result |
+|---|---|
+| `pytest -q` from the clone | **PASS** — 430 passed, 2 warnings |
+| `scripts/prepare_dataset.py` | **PASS** — 6,251 / 883 / 1,147 records, 0 removed |
+| Materialized split files | **Byte-identical** to the originals: train `891f7f73…`, validation `8e564eb0…`, test `35b9b2c0…` |
+| `scripts/preprocess_finqa.py` | **PASS** — 7,134 tokenized records |
+| Tokenized train artifact | **Byte-identical**: `8809f4db5ce6129b…` |
+| Tokenized validation artifact | **Byte-identical**: `4c322338f2ecb6b4…` — exactly the hash recorded in Input provenance above |
+| Tokenized `manifest.json` | **Differs** (`a008de85…` vs the recorded `772cd348…`) for one transitive reason, below |
+| Base/adapter evaluation from the clone | **NOT RUN** — the inference step was already measured on the primary tree; re-running it in the clone would add no new evidence and costs about 47 minutes of MPS time |
+
+The manifest difference was isolated rather than waved away: of 6,235 leaf values in the
+prep manifest, exactly 12 differ (4 evidence-annotation counts × 3 splits), and in every
+case the clone has a number where the original has `null`. The on-disk original was
+produced by an earlier revision of `prepare_dataset.py`, before the evidence-annotation
+audit block existed. The tokenized manifest then differs only because it hashes that
+prep manifest (`dataset.source_manifest_sha256`: clone `5adf9d4b…`, original `fb21cba1…`)
+— 1 differing key out of 61. So the *records* reproduce byte-for-byte, and the only
+incompatibility is a recorded digest that transitively covers non-record metadata.
+
+The cross-check was executed in the clone rather than reasoned about: importing
+`validate_preprocessing_provenance()` from `/tmp/ft_clone/scripts` with `PROJECT_ROOT`
+resolving inside the clone returned without raising, yielding manifest `a008de85…`,
+source validation `8e564eb0…`, tokenized validation `4c322338…`. The two hashes the
+function actually compares — the manifest's recorded `source_split_sha256.validation`
+and `splits.validation.output_sha256` against the on-disk files — are byte-for-byte the
+values in Input provenance above. Only the manifest's own file hash differs.
+
+Practical consequence for a reviewer: a clean checkout regenerates the artifact hashes
+the evaluator checks, so evaluation is reproducible from tracked code plus the pinned
+dataset. Quoting `772cd348…` as a compatibility requirement across checkouts would be
+wrong; it identifies the specific run recorded here, not a stable content fingerprint.
+
 The paired statistics in this report (Wilson 95% intervals, the exact McNemar test on
 discordant pairs, the per-gold-operation and per-length breakdowns, the regression
 list, and the lenient-delimiter probe) were computed from the two
