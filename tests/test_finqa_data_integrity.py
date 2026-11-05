@@ -93,8 +93,7 @@ def test_detects_program_step_mismatch_in_anomaly_examples():
     result = audit_record(
         _record(
             program=(
-                "add(100000, 92500), add(#0, #0), add(#1, const_3), "
-                "divide(#2, const_2)"
+                "add(100000, 92500), add(#0, #0), add(#1, const_3), divide(#2, const_2)"
             ),
             exe_ans="192502",
             answer="91000",
@@ -108,7 +107,6 @@ def test_detects_program_step_mismatch_in_anomaly_examples():
     )
     assert "steps_program_disagreement" in result["flags"]
     assert "program_human_answer_disagreement" in result["flags"]
-
 
 
 def test_text_result_is_compared_without_numeric_parsing():
