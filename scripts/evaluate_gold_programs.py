@@ -29,7 +29,7 @@ def answers_match(predicted: float | str, expected: object) -> bool:
     except (FinQAExecutionError, TypeError, ValueError):
         return False
 
-    return round(predicted, 5) == round(expected_number, 5)
+    # execute_program already rounds the prediction to five decimals. The\n    # official evaluator compares that value directly to the unrounded exe_ans.\n    return predicted == expected_number
 
 
 def evaluate_split(split: str) -> dict[str, object]:

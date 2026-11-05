@@ -288,3 +288,21 @@ def test_magnitude_units_are_not_automatically_rescaled():
     result = audit_record(_record(answer="150 million"))
     assert result["human_answer_match"] is None
     assert result["human_answer_parse_status"] == "answer_requires_unit_context"
+
+
+def test_exe_ans_is_not_rounded_before_official_comparison():
+    result = audit_record(
+        _record(
+            program="divide(1, 3)",
+            exe_ans="0.333333",
+            answer="0.3333",
+            steps={
+                "op": ["divide1-1"],
+                "arg1": ["1"],
+                "arg2": ["3"],
+                "res": ["0.3333"],
+            },
+        )
+    )
+    assert result["exe_ans_match"] is False
+    assert "program_exe_ans_disagreement" in result["flags"]

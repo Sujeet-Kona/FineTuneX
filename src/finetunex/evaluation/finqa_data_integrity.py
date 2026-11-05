@@ -261,7 +261,7 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
         else:
             try:
                 expected_number = parse_number(str(expected))
-                exe_match = round(computed, 5) == round(expected_number, 5)
+                # The official evaluator rounds only the computed final result.\n                exe_match = round(computed, 5) == expected_number
                 result["exe_ans_match"] = exe_match
                 if not exe_match:
                     result["flags"].append("program_exe_ans_disagreement")
@@ -369,7 +369,7 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
                 "scalar numeric; % normalized; magnitude units require manual review"
             ),
             "step_numeric_tolerance": "rounded at annotation precision; scientific notation uses 1e-5 tolerance",
-            "exe_ans_numeric_tolerance": "exact after five-decimal rounding semantics",
+            "exe_ans_numeric_tolerance": "round computed final result to 5 decimals; compare exactly to exe_ans",
             "ambiguous_human_answers": "flagged for manual review; never guessed",
         },
         "total_examples": len(all_results),
