@@ -260,7 +260,7 @@ def validate_manifest(
 
 
 def package_versions() -> dict[str, str]:
-    import peft
+    import pef
     import transformers
     import yaml
 
@@ -401,11 +401,13 @@ def main() -> int:
     global_step = 0
     best_validation_loss = float("inf")
 
+    tracking_config_path = PROJECT_ROOT / "configs/experiment.yaml"
     config_paths = (
         PROJECT_ROOT / "configs/dataset.yaml",
         PROJECT_ROOT / "configs/model.yaml",
         PROJECT_ROOT / "configs/training.yaml",
         PROJECT_ROOT / "configs/preprocessing.yaml",
+        tracking_config_path,
     )
 
     config_hashes = {path.name: sha256_file(path) for path in config_paths}
@@ -431,7 +433,6 @@ def main() -> int:
         args.max_validation_batches or len(validation_loader),
     )
 
-    tracking_config_path = PROJECT_ROOT / "configs/experiment.yaml"
     tracker = MLflowTracker(experiment_config, PROJECT_ROOT)
     tracker.start(
         run_name=f"finqa-{datetime.now(UTC).strftime('%Y%m%dT%H%M%SZ')}",
@@ -448,20 +449,20 @@ def main() -> int:
             "device": str(components.device),
             "run_type": "limited_smoke" if args.max_train_batches or args.max_validation_batches else "full_dataset",
         },
-        config_paths=(*config_paths, tracking_config_path),
+        config_paths=config_paths,
     )
 
     run_status = "FAILED"
     try:
         for epoch in range(1, epochs + 1):
             print(f"\n===== EPOCH {epoch}/{epochs} =====")
-    
+
             train_batches = (
                 islice(train_loader, args.max_train_batches)
                 if args.max_train_batches is not None
                 else train_loader
             )
-    
+
             train_metrics = train_one_epoch(
                 components.model,
                 train_batches,
@@ -471,21 +472,21 @@ def main() -> int:
                 gradient_accumulation_steps=accumulation_steps,
                 max_grad_norm=1.0,
             )
-    
+
             global_step += train_metrics.optimizer_steps
-    
+
             validation_batches = (
                 islice(validation_loader, args.max_validation_batches)
                 if args.max_validation_batches is not None
                 else validation_loader
             )
-    
+
             validation_metrics = evaluate(
                 components.model,
                 validation_batches,
                 device=components.device,
             )
-    
+
             epoch_record = {
                 "epoch": epoch,
                 "global_step": global_step,
@@ -498,15 +499,15 @@ def main() -> int:
                 "validation_supervised_tokens": validation_metrics.supervised_tokens,
                 "validation_microbatches": validation_metrics.microbatches,
             }
-    
+
             history.append(epoch_record)
             tracker.log_epoch(epoch_record)
-    
+
             print(f"Train loss:      {train_metrics.mean_loss:.6f}")
             print(f"Validation loss: {validation_metrics.mean_loss:.6f}")
             print("Optimizer steps:", train_metrics.optimizer_steps)
             print("Gradient norm:", train_metrics.mean_gradient_norm)
-    
+
             metadata = {
                 "run_type": (
                     "limited_smoke"
@@ -565,7 +566,7 @@ def main() -> int:
                 },
                 "created_at_utc": datetime.now(UTC).isoformat(),
             }
-    
+
             saved = save_best_checkpoint(
                 output_dir,
                 components.model,
@@ -573,16 +574,16 @@ def main() -> int:
                 metadata,
                 history,
             )
-    
+
             if saved:
                 best_validation_loss = validation_metrics.mean_loss
                 print("Best checkpoint updated:", output_dir)
             else:
                 print("Checkpoint unchanged; validation did not improve.")
-    
+
             print("Best validation loss:", f"{best_validation_loss:.6f}")
-    
-    
+
+
         run_status = "FINISHED"
     finally:
         tracker.finish(checkpoint_dir=output_dir, status=run_status)
