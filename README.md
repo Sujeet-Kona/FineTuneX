@@ -202,7 +202,7 @@ Build and start the service after exporting the local adapter and Hugging Face
 cache directories:
 
 ```bash
-export FINETUNEX_CHECKPOINT="$PWD/artifacts/checkpoints/<v3-checkpoint-name>"
+export FINETUNEX_CHECKPOINT="$PWD/artifacts/checkpoints/<v4-checkpoint-name>"
 export HF_CACHE_PATH="$HOME/.cache/huggingface"
 docker compose up --build
 ```
