@@ -250,3 +250,43 @@ def test_audit_record_retains_raw_and_parsed_step_diagnostics():
         {"operation": "add", "arg1": "100", "arg2": "200"},
         {"operation": "divide", "arg1": "#0", "arg2": "2"},
     ]
+
+
+def test_human_answer_is_compared_at_its_displayed_precision():
+    result = audit_record(
+        _record(
+            program="add(75.0, 72.7), divide(#0, 20)",
+            exe_ans="7.385",
+            answer="7.4",
+            steps={
+                "op": ["add1-1", "divide1-2"],
+                "arg1": ["75.0", "#0"],
+                "arg2": ["72.7", "20"],
+                "res": ["147.7", "7.4"],
+            },
+        )
+    )
+    assert result["human_answer_match"] is True
+
+
+def test_human_percentage_answer_is_compared_in_percentage_units():
+    result = audit_record(
+        _record(
+            program="divide(1786.2, 2807.0)",
+            exe_ans="0.63634",
+            answer="63.6%",
+            steps={
+                "op": ["divide1-1"],
+                "arg1": ["1786.2"],
+                "arg2": ["2807.0"],
+                "res": ["63.6%"],
+            },
+        )
+    )
+    assert result["human_answer_match"] is True
+
+
+def test_magnitude_units_are_not_automatically_rescaled():
+    result = audit_record(_record(answer="150 million"))
+    assert result["human_answer_match"] is None
+    assert result["human_answer_parse_status"] == "answer_requires_unit_context"
