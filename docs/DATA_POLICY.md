@@ -43,10 +43,10 @@ For transparent secondary metrics, FineTuneX will report both **overall** result
 1. The gold program parses and executes under the official FinQA evaluator.
 2. Its final result matches `exe_ans` using the official five-decimal final-result semantics.
 3. Its `program_re` nested expression agrees structurally with the expression reconstructed from the flat `program` and `#N` references.
-4. Its recorded `steps.op`, `arg1`, `arg2`, and `res` agree with the linear gold program, applying the documented operation-name aliases and comparing numeric step results only at the precision actually recorded in the annotation.
+4. Its recorded `steps.op`, `arg1`, `arg2`, and `res` agree with the linear gold program. Table-operation aliases are normalized in context. Plain numeric results are rounded to their explicitly displayed decimal precision. Percentage annotations are compared using ratio-to-percent semantics; when that interpretation does not match, the record is marked ambiguous rather than assigned a guessed scale or called a confirmed mismatch.
 5. The human-readable `answer` can be parsed unambiguously under a documented normalization rule and agrees with the program result at its displayed precision. Percentage values are compared in percentage units. Magnitude suffixes (thousand/million/billion) require unit context and are not automatically rescaled.
 
-Ambiguous human answers are not guessed. Such examples remain in the overall set but are not counted in the clean diagnostic subset until manually adjudicated. Percentage values are normalized as ratios. Magnitude suffixes (thousand/million/billion) are not automatically rescaled because their units may already be represented in the table; they require manual unit-context review. The clean subset is for stratified reporting only; it is not a filtered training dataset.
+Ambiguous human answers and step percentage conventions are not guessed. Such examples remain in the overall set but are not counted in the clean diagnostic subset until manually adjudicated. Human-answer percentage values are normalized as ratios. Step percentage annotations use ratio-to-percent comparison only when it matches at displayed precision; otherwise they are marked ambiguous. Magnitude suffixes (thousand/million/billion) are not automatically rescaled because their units may already be represented in the table; they require manual unit-context review. The clean subset is for stratified reporting only; it is not a filtered training dataset.
 
 **Current clean-subset counts: MISSING.** The integrity checker has been repaired but the local audit has not yet been rerun and reviewed.
 
@@ -59,7 +59,8 @@ For each split, reports must include:
 - counts for program parse/execution failures;
 - `exe_ans` differences after official rounding;
 - human-answer/program disagreements and ambiguous human answers;
-- malformed or inconsistent step annotations;
+- confirmed step-operation, argument, numeric-result, and malformed-annotation mismatches;
+- ambiguous percentage step annotations, reported separately from confirmed mismatches;
 - `program` versus `program_re` structural disagreements and malformed nested expressions;
 - overall and clean-subset metrics, with sample counts.
 
