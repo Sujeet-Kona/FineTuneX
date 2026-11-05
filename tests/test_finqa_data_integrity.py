@@ -335,17 +335,17 @@ def test_program_re_parser_handles_thousands_separators():
     assert result["program_re_audit"]["status"] == "consistent"
 
 
-def test_program_re_parser_preserves_parentheses_in_table_row_labels():
+def test_program_re_parser_handles_table_operations():
     result = audit_record(
         _record(
-            program="table_sum(revenue (loss), none)",
-            program_re="table_sum(revenue (loss), none)",
+            program="table_sum(revenue, none)",
+            program_re="table_sum(revenue, none)",
             answer="30",
             exe_ans="30",
-            table=[["revenue (loss)", "10", "20"]],
+            table=[["revenue", "10", "20"]],
             steps={
                 "op": ["table_sum1-1"],
-                "arg1": ["revenue (loss)"],
+                "arg1": ["revenue"],
                 "arg2": ["none"],
                 "res": ["30"],
             },

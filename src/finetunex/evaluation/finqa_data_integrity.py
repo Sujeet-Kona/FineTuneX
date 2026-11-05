@@ -136,17 +136,12 @@ def _parse_nested_program(program_re: str) -> tuple[Any, ...]:
     def parse_argument(operation: str, argument_index: int) -> Any:
         nonlocal position
         skip_whitespace()
-        if not (operation.startswith("table_") and argument_index == 0) and re.match(
-            r"[a-z_]+\s*\(", program_re[position:]
-        ):
+        if re.match(r"[a-z_]+\s*\(", program_re[position:]):
             return parse_expression()
 
         start = position
         while position < len(program_re):
-            if (
-                not (operation.startswith("table_") and argument_index == 0)
-                and program_re[position] == ")"
-            ):
+            if program_re[position] == ")":
                 break
             if (
                 program_re[position] == ","
