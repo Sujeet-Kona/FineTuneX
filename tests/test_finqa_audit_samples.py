@@ -120,3 +120,18 @@ def test_rejects_zero_sample_limit(tmp_path):
             output_dir=tmp_path / "samples",
             limit_per_category=0,
         )
+
+
+def test_sample_selection_uses_train_validation_test_order(tmp_path):
+    source_dir, audit_path = _fixture(tmp_path)
+    output_dir = tmp_path / "samples"
+
+    manifest = export_audit_samples(
+        source_dir=source_dir,
+        audit_path=audit_path,
+        output_dir=output_dir,
+        limit_per_category=1,
+    )
+
+    details = manifest["categories"]["exe_ans_disagreements"]
+    assert details["sample_ids"] == ["train:train-1"]
