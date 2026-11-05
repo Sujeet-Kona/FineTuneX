@@ -460,11 +460,7 @@ def main() -> None:
                 )
 
         total = counters["total"]
-        sample_method = (
-            "sha256_record_id"
-            if total < 883
-            else "complete_official_order"
-        )
+        sample_method = "sha256_record_id" if total < 883 else "complete_official_order"
         summary = {
             "evaluation": "finetunex_finqa_generated_programs",
             "evaluation_schema_version": 1,
