@@ -60,7 +60,7 @@ For each split, reports must include:
 - `exe_ans` differences after official rounding;
 - human-answer/program disagreements and ambiguous human answers;
 - malformed or inconsistent step annotations;
-- `program` versus `program_re` disagreements, once that comparison is implemented;
+- `program` versus `program_re` structural disagreements and malformed nested expressions;
 - overall and clean-subset metrics, with sample counts.
 
 No aggregate annotation result is considered trusted until the audit passes hand-verified fixtures and representative real-record review.

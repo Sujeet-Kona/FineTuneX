@@ -136,7 +136,7 @@ def _parse_nested_program(program_re: str) -> tuple[Any, ...]:
     def parse_argument(operation: str, argument_index: int) -> Any:
         nonlocal position
         skip_whitespace()
-        if re.match(r"[a-z_]+\\s*\\(", program_re[position:]):
+        if re.match(r"[a-z_]+\s*\(", program_re[position:]):
             return parse_expression()
 
         start = position
@@ -159,7 +159,7 @@ def _parse_nested_program(program_re: str) -> tuple[Any, ...]:
     def parse_expression() -> tuple[Any, ...]:
         nonlocal position
         skip_whitespace()
-        match = re.match(r"([a-z_]+)\\s*\\(", program_re[position:])
+        match = re.match(r"([a-z_]+)\s*\(", program_re[position:])
         if match is None:
             raise ValueError(f"Expected an operation at offset {position}.")
 
@@ -189,7 +189,7 @@ def _linear_program_expression(steps: tuple[Any, ...]) -> tuple[Any, ...]:
     for index, step in enumerate(steps):
         arguments: list[Any] = []
         for argument_index, argument in enumerate((step.arg1, step.arg2)):
-            reference = re.fullmatch(r"#(\\d+)", argument)
+            reference = re.fullmatch(r"#(\d+)", argument)
             if reference is not None:
                 reference_index = int(reference.group(1))
                 if reference_index >= index:
