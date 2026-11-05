@@ -1,6 +1,6 @@
 # FinQA Data Policy
 
-**Status:** Policy defined; local full-split audit has been generated and is undergoing representative-record review.  
+**Status:** Policy defined; local full-split audit has been generated. Representative-record export and manual review are pending.  
 **Dataset:** `bevaya/FinQA`  
 **Pinned revision:** `3d6a736bc67e06bc15fbf3618d88204a57c5b25e`
 
@@ -48,7 +48,7 @@ For transparent secondary metrics, FineTuneX will report both **overall** result
 
 Ambiguous human answers and step percentage conventions are not guessed. Such examples remain in the overall set but are not counted in the clean diagnostic subset until manually adjudicated. Human-answer percentage comparison accepts either ratio or percentage-point program output for an explicitly marked percentage answer; an unmarked numeric answer is considered in percentage points only when the question or recorded steps establish that context. Step percentage annotations use ratio-to-percent comparison only when it matches at displayed precision; otherwise they are marked ambiguous. Magnitude suffixes (thousand/million/billion) are not automatically rescaled because their units may already be represented in the table; they require manual unit-context review. The clean subset is for stratified reporting only; it is not a filtered training dataset.
 
-**Current clean-subset counts: MISSING.** The integrity checker has been repaired but the local audit has not yet been rerun and reviewed.
+**Current clean-subset counts: MISSING.** The local audit has been generated, but records have not yet been manually adjudicated and a clean-subset count has not been calculated. Aggregate audit totals alone are not sufficient to declare records clean.
 
 ## Interpretation of execution-answer diagnostics
 
