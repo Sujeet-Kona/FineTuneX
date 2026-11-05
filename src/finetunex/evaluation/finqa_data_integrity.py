@@ -40,33 +40,66 @@ def _close(left: float, right: float, *, rel_tol: float = 1e-5) -> bool:
     return math.isclose(left, right, rel_tol=rel_tol, abs_tol=1e-5)
 
 
-def _step_result_matches(value: float | str, annotation: Any) -> bool:
-    """Compare a step result at the precision recorded by FinQA annotations."""
+def _step_result_comparison(
+    value: float | str, annotation: Any
+) -> dict[str, Any]:
+    """Classify a step annotation without guessing percentage conventions."""
     if isinstance(value, str):
-        return value.strip().casefold() == str(annotation).strip().casefold()
+        matched = value.strip().casefold() == str(annotation).strip().casefold()
+        return {"status": "match" if matched else "mismatch"}
 
     raw = str(annotation).strip().replace(",", "")
     raw = raw.replace("$", "").replace("€", "").replace("£", "").strip()
     is_percentage = raw.endswith("%")
     numeric_text = raw[:-1].strip() if is_percentage else raw
 
-    if "e" in numeric_text.casefold():
-        try:
-            return _close(value, parse_number(raw))
-        except FinQAExecutionError:
-            return False
-
     try:
-        parsed = parse_number(raw)
+        parsed = parse_number(numeric_text)
     except FinQAExecutionError:
-        return False
+        return {"status": "unparseable"}
 
     decimal_places = (
-        len(numeric_text.split(".", maxsplit=1)[1]) if "." in numeric_text else 0
+        len(numeric_text.split(".", maxsplit=1)[1])
+        if "." in numeric_text
+        else 0
     )
-    actual = value * 100 if is_percentage else value
-    expected = parsed * 100 if is_percentage else parsed
-    return round(actual, decimal_places) == round(expected, decimal_places)
+    if is_percentage:
+        actual_percentage = value * 100
+        matched = round(actual_percentage, decimal_places) == round(
+            parsed, decimal_places
+        )
+        if matched:
+            return {"status": "match", "convention": "ratio_to_percent"}
+        return {
+            "status": "ambiguous",
+            "reason": "percentage_scale_or_sign_convention",
+            "computed_ratio": value,
+            "computed_percent": actual_percentage,
+            "annotated_percent": parsed,
+        }
+
+    matched = round(value, decimal_places) == round(parsed, decimal_places)
+    return {
+        "status": "match" if matched else "mismatch",
+        "computed": value,
+        "annotated": parsed,
+        "displayed_decimal_places": decimal_places,
+    }
+
+
+def _normalize_step_operation(annotation: Any, program_operation: str) -> str | None:
+    if not isinstance(annotation, str):
+        return None
+    match = _STEP_OP.fullmatch(annotation)
+    if match is None:
+        return None
+
+    operation = _STEP_OPERATION_ALIASES.get(match.group(1), match.group(1))
+    if program_operation.startswith("table_"):
+        table_alias = f"table_{operation}"
+        if table_alias == program_operation:
+            return table_alias
+    return operation
 
 
 def _parse_human_answer(value: Any) -> tuple[float | None, str]:
@@ -256,10 +289,8 @@ def _compare_step_annotations(
             if isinstance(op_annotation, str)
             else None
         )
-        annotated_operation = (
-            _STEP_OPERATION_ALIASES.get(op_match.group(1), op_match.group(1))
-            if op_match is not None
-            else None
+        annotated_operation = _normalize_step_operation(
+            op_annotation, step.operation
         )
         if annotated_operation != step.operation:
             issues.append(
@@ -298,18 +329,59 @@ def _compare_step_annotations(
             break
 
         annotated_result = arrays["res"][index]
-        if not _step_result_matches(value, annotated_result):
+        comparison = _step_result_comparison(value, annotated_result)
+        if comparison["status"] == "mismatch":
             issues.append(
                 {
                     "step": index,
                     "kind": "step_result_mismatch",
                     "program_result": value,
                     "annotated_result": annotated_result,
+                    "comparison": comparison,
+                }
+            )
+        elif comparison["status"] == "ambiguous":
+            issues.append(
+                {
+                    "step": index,
+                    "kind": "step_result_ambiguous",
+                    "program_result": value,
+                    "annotated_result": annotated_result,
+                    "comparison": comparison,
+                }
+            )
+        elif comparison["status"] == "unparseable":
+            issues.append(
+                {
+                    "step": index,
+                    "kind": "step_result_unparseable",
+                    "program_result": value,
+                    "annotated_result": annotated_result,
                 }
             )
 
+    issue_kinds = {issue["kind"] for issue in issues}
+    confirmed_mismatch = any(
+        kind in issue_kinds
+        for kind in (
+            "operation_mismatch",
+            "arg1_mismatch",
+            "arg2_mismatch",
+            "step_result_mismatch",
+            "step_result_unparseable",
+            "program_step_execution_error",
+        )
+    )
+    ambiguous = "step_result_ambiguous" in issue_kinds
+    status = (
+        "mismatch"
+        if confirmed_mismatch
+        else "ambiguous"
+        if ambiguous
+        else "consistent"
+    )
     return {
-        "status": "consistent" if not issues else "mismatch",
+        "status": status,
         "issues": issues,
         "program_intermediate_results": results,
     }
@@ -371,8 +443,10 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
 
     step_audit = _compare_step_annotations(record, steps, table)
     result["steps_audit"] = step_audit
-    if step_audit["status"] != "consistent":
+    if step_audit["status"] == "mismatch":
         result["flags"].append("steps_program_disagreement")
+    elif step_audit["status"] == "ambiguous":
+        result["flags"].append("steps_annotation_ambiguous")
 
     if computed is not None:
         expected = record.get("exe_ans")
@@ -471,8 +545,11 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
         "human_answer_program_disagreements": sum(
             "program_human_answer_disagreement" in item["flags"] for item in all_results
         ),
-        "step_annotation_issues": sum(
+        "step_annotation_confirmed_mismatches": sum(
             "steps_program_disagreement" in item["flags"] for item in all_results
+        ),
+        "step_annotation_ambiguous": sum(
+            "steps_annotation_ambiguous" in item["flags"] for item in all_results
         ),
         "unexecutable_programs": sum(
             any(
@@ -502,8 +579,10 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
             "human_answer_parser": (
                 "scalar numeric; % normalized; magnitude units require manual review"
             ),
-            "step_numeric_tolerance": (
-                "annotation precision; scientific tolerance 1e-5"
+            "step_numeric_comparison": (
+                "plain numbers rounded to displayed decimal precision; percentage "
+                "annotations are compared as ratio-to-percent and otherwise marked "
+                "ambiguous, never auto-converted to another scale"
             ),
             "exe_ans_numeric_tolerance": (
                 "round computed final result to 5 decimals; compare exactly to exe_ans"
