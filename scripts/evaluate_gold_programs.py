@@ -29,7 +29,7 @@ def answers_match(predicted: float | str, expected: object) -> bool:
     except (FinQAExecutionError, TypeError, ValueError):
         return False
 
-    return predicted == expected_number
+    return round(predicted, 5) == round(expected_number, 5)
 
 
 def evaluate_split(split: str) -> dict[str, object]:
