@@ -74,9 +74,7 @@ def _select_stratified(
     for split, items in grouped.items():
         exact = target * len(items) / total
         quotas[split] = int(exact)
-        remainders.append(
-            (exact - quotas[split], SPLIT_ORDER[split], split)
-        )
+        remainders.append((exact - quotas[split], SPLIT_ORDER[split], split))
 
     remaining = target - sum(quotas.values())
     for _, _, split in sorted(remainders, key=lambda value: (-value[0], value[1]))[
