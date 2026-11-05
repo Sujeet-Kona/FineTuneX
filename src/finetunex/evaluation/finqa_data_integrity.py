@@ -179,29 +179,38 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
         result["flags"].append("steps_program_disagreement")
 
     if computed is not None:
-        try:
-            expected = record.get("exe_ans")
-            expected_number = parse_number(str(expected))
-            exe_match = (
-                computed == expected
-                if isinstance(computed, str)
-                else round(computed, 5) == round(expected_number, 5)
-            )
+        expected = record.get("exe_ans")
+        if isinstance(computed, str):
+            exe_match = computed.strip().casefold() == str(expected).strip().casefold()
             result["exe_ans_match"] = exe_match
             if not exe_match:
                 result["flags"].append("program_exe_ans_disagreement")
-        except FinQAExecutionError:
-            result["exe_ans_match"] = False
-            result["flags"].append("exe_ans_unparseable")
+        else:
+            try:
+                expected_number = parse_number(str(expected))
+                exe_match = round(computed, 5) == round(expected_number, 5)
+                result["exe_ans_match"] = exe_match
+                if not exe_match:
+                    result["flags"].append("program_exe_ans_disagreement")
+            except FinQAExecutionError:
+                result["exe_ans_match"] = False
+                result["flags"].append("exe_ans_unparseable")
 
         answer_number, answer_status = _parse_human_answer(record.get("answer"))
         result["human_answer_parse_status"] = answer_status
-        if answer_number is None:
+        if isinstance(computed, str):
+            normalized_answer = str(record.get("answer", "")).strip().casefold()
+            if normalized_answer in {"yes", "no"}:
+                answer_match = computed.casefold() == normalized_answer
+                result["human_answer_match"] = answer_match
+                if not answer_match:
+                    result["flags"].append("program_human_answer_disagreement")
+            else:
+                result["human_answer_match"] = None
+                result["flags"].append("human_answer_requires_manual_review")
+        elif answer_number is None:
             result["human_answer_match"] = None
             result["flags"].append("human_answer_requires_manual_review")
-        elif isinstance(computed, str):
-            result["human_answer_match"] = False
-            result["flags"].append("program_human_answer_disagreement")
         else:
             answer_match = _close(computed, answer_number)
             result["human_answer_match"] = answer_match
