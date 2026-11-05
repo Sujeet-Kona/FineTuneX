@@ -200,3 +200,37 @@ def test_source_compare_larger_annotation_maps_to_greater():
     )
     assert result["steps_audit"]["status"] == "consistent"
     assert result["classification"] == "internally_consistent"
+
+
+def test_step_annotation_rounding_at_recorded_decimal_precision():
+    result = audit_record(
+        _record(
+            program="add(75.0, 72.7), divide(#0, 20)",
+            exe_ans="7.385",
+            answer="7.4",
+            steps={
+                "op": ["add1-1", "divide1-2"],
+                "arg1": ["75.0", "#0"],
+                "arg2": ["72.7", "20"],
+                "res": ["147.7", "7.4"],
+            },
+        )
+    )
+    assert result["steps_audit"]["status"] == "consistent"
+
+
+def test_percentage_step_annotation_rounding_at_recorded_precision():
+    result = audit_record(
+        _record(
+            program="divide(1786.2, 2807.0)",
+            exe_ans="0.63634",
+            answer="63.6%",
+            steps={
+                "op": ["divide1-1"],
+                "arg1": ["1786.2"],
+                "arg2": ["2807.0"],
+                "res": ["63.6%"],
+            },
+        )
+    )
+    assert result["steps_audit"]["status"] == "consistent"
