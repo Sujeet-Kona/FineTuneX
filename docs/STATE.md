@@ -3,7 +3,7 @@
 **Inspection date:** 2026-11-05  
 **Repository:** https://github.com/Sujeet-Kona/FineTuneX  
 **Inspected branch:** `fix/finqa-experiment-integrity`  
-**Inspected PR #6 head before this document:** `ed086ec837894f93b32b25560e6b967d194c38ac`  
+**PR #6 head at this update:** `ba0747b2e5b941d8cf0dfd87e5162ea96d606b21`  
 **Base branch:** `feat/inference-independent-prompt-budget` (`6d3ca14a4c8c96ddfd187124976624661a2d31c0`)
 
 This is a read-only engineering assessment of the repository and its open pull-request stack, plus this state document. It does not claim that local model, dataset, or MPS workloads were executed.
@@ -88,17 +88,17 @@ The repository code explicitly rejects bfloat16 on MPS in its current training l
 
 ## Confirmed defects and validation blockers
 
-1. **Confirmed: annotation-audit module syntax error.** At the inspected head, `src/finetunex/evaluation/finqa_data_integrity.py` contains literal backslash-n sequences inside Python expressions around the operation-match expression (reported at line 88) and the policy string (reported at line 272). These are source text, not line breaks.
-2. **Confirmed: latest completed CI did not reach pytest.** Run `41979466756` for commit `38bc78b24c6a6e3e5afa41c7b20e11d92d035bab` failed in `ruff check .`. Ruff reported invalid syntax in the annotation-audit module. Formatting and pytest steps were not reached.
-3. **Confirmed: annotation audit's previous 7,134/7,134 step-disagreement aggregate is not accepted as evidence.** The checker implementation has not passed its own syntax/lint gate and has not been validated against a hand-verified fixture corpus. Treat all earlier aggregates as untrusted until repaired and independently checked.
-4. **Confirmed: the current gold audit does not yet satisfy the requested official differential test.** The repository contains a separate reference-style implementation, but the official FinQA evaluator source has not yet been wired into a differential run across all gold programs.
+1. **Repaired in source, execution unverified: annotation-audit syntax error.** The literal backslash-n sequences around the operation-match expression and policy string have now been replaced with real line breaks. A source inspection confirms there are no remaining literal backslash-n sequences in this module. Ruff/pytest have not yet been run on the repair commit.
+2. **Confirmed: latest completed CI did not reach pytest.** Run `41980248395` for commit `0661c4e3ae9d3e6ad5aead73c3cc7e8377661295` failed in `ruff check .` with the literal-newline syntax errors. The current repair commits have no associated workflow runs yet. Formatting and pytest have not been confirmed on the current head.
+3. **Confirmed: annotation audit's previous 7,134/7,134 step-disagreement aggregate is not accepted as evidence.** The checker had both a syntax defect and a source-operation alias defect. It now maps `minus` to `subtract` and `compare_larger` to `greater`; tests cover those aliases. Step-result comparisons now use the precision represented in the recorded annotation (including percentages). These repairs are not yet run against the full source data; all previous aggregate counts remain untrusted.
+4. **Implemented, execution missing: official evaluator differential.** The official `czyssrs/FinQA` evaluator source was fetched from commit `dfc5b72c01ee17c442d28d5201b82a1f4e95d5af` (file blob `4829a4ca58a5725fb3f7a46b3b23b7f7e848a512`). A test-only execution oracle, a fixture test, and `scripts/differential_finqa_executor.py` were added. The full train/validation differential has not yet been run.
 5. **Confirmed: the remote repository does not contain the generated evidence audit, annotation audit, gold audit, preprocessing artifacts, base-model predictions, adapter predictions, or a trained checkpoint.** These outputs are missing from the inspected Git tree.
-6. **Confirmed: the annotation checker does not model the documented source operation labels correctly.** The selected dataset card documents `steps.op` labels such as `minus2-1`, while the checker captures the prefix (`minus`) and compares it directly with the program DSL operation (`subtract`). Its fixtures instead use labels such as `subtract` or `add1-1`, so they do not adequately represent the documented source schema. This is a concrete checker/fixture defect to repair; the exact number of affected raw records remains **MISSING** until source data is inspected.
+6. **Repaired in source, full-split verification missing: annotation operation aliases.** The Hugging Face dataset viewer contains real records with `minus1-1` and `compare_larger1-4`; the checker now normalizes these to `subtract` and `greater`. The exact number of affected raw records remains **MISSING** until the local audit runs.
 7. **Confirmed: the prompt tests contain inconsistent fake-tokenizer behavior.** The preprocessing test fake omits a thinking block when `enable_thinking=False`; the inference-prompt test fake appends a `<think>` block even when the same flag is false and asserts that block is present. This is a test-fixture inconsistency, not proof that the production tokenizer emits thinking tokens. Real tokenizer prompt parity remains **MISSING**.
 8. **Confirmed: the gold-executor unit test compares the custom executor to the repository's own reference-style port, not the official evaluator implementation.** That test cannot establish official differential equivalence.
-9. **Confirmed: the training entrypoint starts fresh runs only.** It rejects an existing output directory and does not resume optimizer/scheduler state. The checkpoint publisher keeps the best validation-loss checkpoint; a separate last checkpoint and resumable training state are not implemented in the inspected path. The training config has no learning-rate scheduler setting.
-10. **Confirmed: current evaluation metrics are narrower than the requested final specification.** The model evaluator records parse/execution/`exe_ans` answer accuracy, but does not report separate exact gold-program match and human-readable answer-string match. The required expanded scorer/spec is **MISSING**.
-11. **Historical README metrics are not current v4 results.** README labels the v3 32-example base/adapter pilot as historical and superseded. No v4 base-versus-adapter comparison is present.
+12. **Confirmed: the training entrypoint starts fresh runs only.** It rejects an existing output directory and does not resume optimizer/scheduler state. The checkpoint publisher keeps the best validation-loss checkpoint; a separate last checkpoint and resumable training state are not implemented in the inspected path. The training config has no learning-rate scheduler setting.
+13. **Confirmed: current evaluation metrics are narrower than the requested final specification.** The model evaluator records parse/execution/`exe_ans` answer accuracy, but does not report separate exact gold-program match and human-readable answer-string match. The required expanded scorer/spec is **MISSING**.
+14. **Historical README metrics are not current v4 results.** README labels the v3 32-example base/adapter pilot as historical and superseded. No v4 base-versus-adapter comparison is present.
 
 ## Tests and CI
 
@@ -106,6 +106,7 @@ The repository code explicitly rejects bfloat16 on MPS in its current training l
 - Latest inspected completed CI run: `41979466756`, conclusion `failure`.
 - Failure stage: `ruff check .`.
 - `ruff format --check .`: **NOT REACHED** in that run.
+- Latest repair head has no CI result associated with it; current Ruff/pytest status is **MISSING**.
 - `pytest -q`: **NOT REACHED** in that run.
 - Local `ruff check`, `ruff format --check`, and full `pytest` on the user's Mac: **MISSING**.
 - Model/dataset integration tests and MPS workloads: **MISSING**.
@@ -129,11 +130,11 @@ A later run was triggered by the metadata/documentation commits made while orien
 - User-Mac full test results.
 - Verified official-executor differential report.
 - Trusted annotation-integrity aggregates and reviewed sample files.
-- `docs/DATA_POLICY.md`, `docs/EVAL_SPEC.md`, and `docs/RESULTS.md`.
+- `docs/EVAL_SPEC.md` and `docs/RESULTS.md`. `docs/DATA_POLICY.md` has now been added; its policy is defined but local record counts remain missing.
 - Token-length percentile report and MPS memory feasibility evidence.
 - Verified v4 base-model evaluation report and manually reviewed generations.
 - Verified v4 LoRA pilot, loss curves, overfit test, and paired comparison.
 - Adapter metadata/hash validation and deterministic inference reproduction.
 - Real API smoke test, Docker runtime test, and fresh-clone reproduction.
 
-**No source data was changed by this inspection. No model training or model evaluation was run.**
+**No source data was changed. The official differential and annotation audit have not yet been run on local data. No model training or model evaluation was run.**
