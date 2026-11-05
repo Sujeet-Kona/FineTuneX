@@ -25,6 +25,10 @@ from finetunex.evaluation.finqa_parser import (
 )
 
 _STEP_OP = re.compile(r"^([a-z_]+)\d+-\d+$")
+_STEP_OPERATION_ALIASES = {
+    "minus": "subtract",
+    "compare_larger": "greater",
+}
 _ANSWER = re.compile(
     r"^\s*[$€£]?\s*([-+]?(?:\d[\d,]*\.?\d*|\.\d+))"
     r"\s*(%|million|billion|thousand)?\s*$",
@@ -85,13 +89,24 @@ def _compare_step_annotations(
     issues: list[dict[str, Any]] = []
     for index, step in enumerate(program_steps):
         op_annotation = arrays["op"][index]
-        op_match = (\n            _STEP_OP.fullmatch(op_annotation)\n            if isinstance(op_annotation, str)\n            else None\n        )
-        annotated_operation = (\n            _STEP_OPERATION_ALIASES.get(op_match.group(1), op_match.group(1))\n            if op_match is not None\n            else None\n        )\n        if annotated_operation != step.operation:
+        op_match = (
+            _STEP_OP.fullmatch(op_annotation)
+            if isinstance(op_annotation, str)
+            else None
+        )
+        annotated_operation = (
+            _STEP_OPERATION_ALIASES.get(op_match.group(1), op_match.group(1))
+            if op_match is not None
+            else None
+        )
+        if annotated_operation != step.operation:
             issues.append({
                 "step": index,
                 "kind": "operation_mismatch",
                 "program": step.operation,
-                "annotated": op_annotation,\n                "normalized_annotation": annotated_operation,
+                "annotated": op_annotation,
+                "normalized_annotation": annotated_operation,
+                "normalized_annotation": annotated_operation,
             })
 
         for field, expected in (("arg1", step.arg1), ("arg2", step.arg2)):
@@ -269,7 +284,9 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
         "policy": {
             "source_records_modified": False,
             "automatic_exclusions": 0,
-            "human_answer_parser": (\n                "single numeric scalar with optional %, thousand, million, billion"\n            ),
+            "human_answer_parser": (
+                "single numeric scalar with optional %, thousand, million, billion"
+            ),
             "step_numeric_tolerance": "relative 1e-5, absolute 1e-5",
             "exe_ans_numeric_tolerance": "exact after five-decimal rounding semantics",
             "ambiguous_human_answers": "flagged for manual review; never guessed",
