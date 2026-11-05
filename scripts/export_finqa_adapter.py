@@ -109,7 +109,7 @@ def main() -> int:
             "validation_loss": metadata["validation_loss"],
         }
         (destination / "export_metadata.json").write_text(
-            json.dumps(export_metadata, indent=2, sort_keys=True) + "\\n",
+            json.dumps(export_metadata, indent=2, sort_keys=True) + "\n",
             encoding="utf-8",
         )
     except Exception:
