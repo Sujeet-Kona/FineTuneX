@@ -461,3 +461,42 @@ def test_plain_numeric_step_disagreement_remains_confirmed():
     )
     assert result["steps_audit"]["status"] == "mismatch"
     assert "steps_program_disagreement" in result["flags"]
+
+
+
+def test_human_percentage_answer_matches_program_already_in_percentage_points():
+    result = audit_record(
+        _record(
+            program="subtract(34.8, 1.2), divide(#0, 34.8), multiply(#1, const_100)",
+            exe_ans="96.5517",
+            answer="96.55%",
+            question="what percentage decrease occurred from 2011-2012?",
+            steps={
+                "op": ["minus2-1", "divide2-2", "multiply2-3"],
+                "arg1": ["34.8", "#0", "#1"],
+                "arg2": ["1.2", "34.8", "const_100"],
+                "res": ["33.6", "0.9655", "96.55"],
+            },
+        )
+    )
+    assert result["human_answer_match"] is True
+    assert "program_human_answer_disagreement" not in result["flags"]
+
+
+def test_unmarked_human_answer_uses_percentage_context_from_question_and_steps():
+    result = audit_record(
+        _record(
+            program="divide(646.7, 2320.7)",
+            exe_ans="0.27867",
+            answer="27.9",
+            question="what was the percent of goodwill to total purchase price?",
+            steps={
+                "op": ["divide1-1"],
+                "arg1": ["646.7"],
+                "arg2": ["2320.7"],
+                "res": ["27.9%"],
+            },
+        )
+    )
+    assert result["human_answer_match"] is True
+    assert "program_human_answer_disagreement" not in result["flags"]
