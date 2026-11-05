@@ -34,8 +34,6 @@ def test_parse_negative_constant():
         ("greater(5, 10)", "no"),
     ],
 )
-
-
 def test_arithmetic_operations(program, expected):
     assert execute_program(program, []) == expected
 
