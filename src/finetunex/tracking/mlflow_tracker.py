@@ -13,10 +13,16 @@ from typing import Any
 class MLflowTracker:
     """Small lifecycle wrapper around one optional MLflow run."""
 
-    def __init__(self, settings: dict[str, Any], project_root: Path) -> None:
+    def __init__(self, experiment_config: dict[str, Any], project_root: Path) -> None:
+        if not isinstance(experiment_config, dict):
+            raise TypeError("experiment must be a mapping")
+        settings = experiment_config.get("tracking")
         if not isinstance(settings, dict):
             raise TypeError("experiment.tracking must be a mapping")
         self.settings = settings
+        self.artifacts = experiment_config.get("artifacts", {})
+        if not isinstance(self.artifacts, dict):
+            raise TypeError("experiment.artifacts must be a mapping")
         self.project_root = project_root
         self.enabled = settings.get("enabled", False)
         if not isinstance(self.enabled, bool):
@@ -69,7 +75,7 @@ class MLflowTracker:
         if self.settings.get("log_system_metrics", False):
             mlflow.enable_system_metrics_logging()
 
-        if self.settings.get("log_configurations", True):
+        if self.artifacts.get("log_configurations", True):
             for path in config_paths:
                 mlflow.log_artifact(str(path), artifact_path="config")
 
@@ -98,11 +104,11 @@ class MLflowTracker:
 
         try:
             if checkpoint_dir is not None:
-                if self.settings.get("log_training_history", True):
+                if self.artifacts.get("log_training_history", True):
                     history = checkpoint_dir / "training_history.json"
                     if history.is_file():
                         self.mlflow.log_artifact(str(history), artifact_path="training")
-                if self.settings.get("log_checkpoint_metadata", True):
+                if self.artifacts.get("log_checkpoint_metadata", True):
                     metadata = checkpoint_dir / "checkpoint_metadata.json"
                     if metadata.is_file():
                         self.mlflow.log_artifact(str(metadata), artifact_path="checkpoint")
