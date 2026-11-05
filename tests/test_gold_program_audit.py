@@ -4,7 +4,7 @@ import json
 
 import pytest
 
-import evaluate_gold_programs as audit
+from scripts import evaluate_gold_programs as audit
 from finetunex.evaluation.finqa_executor import FinQAExecutionError
 
 
