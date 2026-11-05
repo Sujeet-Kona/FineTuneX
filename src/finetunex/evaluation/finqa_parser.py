@@ -71,7 +71,9 @@ def parse_program(program: str) -> tuple[ProgramStep, ...]:
             raise FinQAProgramParseError(f"Unsupported operation: {operation!r}.")
 
         arguments_start = match.end()
-        # The official FinQA tokenizer separates arguments with comma-space.\n        # Keep commas inside numeric literals such as 1,000 intact.\n        separator = source.find(", ", arguments_start)
+        # The official FinQA tokenizer separates arguments with comma-space.
+        # Keep commas inside numeric literals such as 1,000 intact.
+        separator = source.find(", ", arguments_start)
 
         if separator == -1:
             raise FinQAProgramParseError(
