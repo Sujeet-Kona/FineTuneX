@@ -141,7 +141,10 @@ def _parse_nested_program(program_re: str) -> tuple[Any, ...]:
 
         start = position
         while position < len(program_re):
-            if program_re[position] == ")":
+            if (
+                not (operation.startswith("table_") and argument_index == 0)
+                and program_re[position] == ")"
+            ):
                 break
             if (
                 program_re[position] == ","
