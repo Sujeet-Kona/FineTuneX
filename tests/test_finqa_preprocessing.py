@@ -5,6 +5,7 @@ import pytest
 from finetunex.data.finqa_preprocessing import (
     PROMPT_VERSION,
     SYSTEM_INSTRUCTION,
+    build_prompt,
     preprocess_record,
 )
 
@@ -31,7 +32,9 @@ class FakeTokenizer:
         )
 
         if add_generation_prompt:
-            rendered += "<|im_start|>assistant\n<think>\n\n</think>\n\n"
+            rendered += "<|im_start|>assistant\n"
+            if enable_thinking:
+                rendered += "<think>\n"
 
         return rendered
 
@@ -243,3 +246,14 @@ def test_rejects_empty_program():
 def test_rejects_invalid_evidence_budget():
     with pytest.raises(ValueError, match="evidence_budget"):
         preprocess(evidence_budget=0)
+
+
+def test_generation_prompt_respects_disabled_thinking_flag():
+    prompt = build_prompt(
+        "What was revenue?",
+        [],
+        "Year | Revenue\n2023 | 125",
+        FakeTokenizer(),
+    )
+    assert "<think>" not in prompt
+    assert prompt.endswith("<|im_start|>assistant\n")

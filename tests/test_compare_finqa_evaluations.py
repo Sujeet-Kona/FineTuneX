@@ -12,6 +12,8 @@ def make_summary(source):
         },
         "scope": {
             "examples_evaluated": 2,
+            "sample_method": "complete_official_order",
+            "sample_seed": None,
             "max_new_tokens": 128,
             "max_prompt_tokens": 1408,
             "evidence_budget": 1024,
@@ -119,6 +121,33 @@ def test_rejects_prompt_budget_mismatch():
     adapter_summary["scope"]["max_prompt_tokens"] = 1200
 
     with pytest.raises(ValueError, match="Scope mismatch: max_prompt_tokens"):
+        compare(
+            make_summary("base_model"),
+            make_rows(),
+            adapter_summary,
+            make_rows(),
+        )
+
+
+def test_rejects_validation_sample_method_mismatch():
+    adapter_summary = make_summary("lora_adapter")
+    adapter_summary["scope"]["sample_method"] = "sha256_record_id"
+    adapter_summary["scope"]["sample_seed"] = 7
+
+    with pytest.raises(ValueError, match="Scope mismatch: sample_method"):
+        compare(
+            make_summary("base_model"),
+            make_rows(),
+            adapter_summary,
+            make_rows(),
+        )
+
+
+def test_rejects_validation_sample_seed_mismatch():
+    adapter_summary = make_summary("lora_adapter")
+    adapter_summary["scope"]["sample_seed"] = 7
+
+    with pytest.raises(ValueError, match="Scope mismatch: sample_seed"):
         compare(
             make_summary("base_model"),
             make_rows(),

@@ -12,6 +12,7 @@ import evaluate_finqa_model as evaluator  # noqa: E402
 from evaluate_finqa_model import (  # noqa: E402
     evaluate_prediction,
     inference_only_record,
+    load_validation_records,
     validate_preprocessing_provenance,
 )
 
@@ -113,9 +114,9 @@ def test_validation_provenance_accepts_matching_source_and_artifact(
     processed_dir.mkdir(parents=True)
     source_path = tmp_path / "data" / "processed" / "finqa" / "validation.jsonl"
     source_path.parent.mkdir(parents=True)
-    source_path.write_text('{"id":"record-1"}\\n', encoding="utf-8")
+    source_path.write_text('{"id":"record-1"}\n', encoding="utf-8")
     artifact_path = processed_dir / "validation.jsonl"
-    artifact_path.write_text('{"input_ids":[1,2]}\\n', encoding="utf-8")
+    artifact_path.write_text('{"input_ids":[1,2]}\n', encoding="utf-8")
 
     source_hash = hashlib.sha256(source_path.read_bytes()).hexdigest()
     artifact_hash = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
@@ -144,9 +145,9 @@ def test_validation_provenance_rejects_wrong_source_hash(tmp_path, monkeypatch):
     processed_dir.mkdir(parents=True)
     source_path = tmp_path / "data" / "processed" / "finqa" / "validation.jsonl"
     source_path.parent.mkdir(parents=True)
-    source_path.write_text('{"id":"record-1"}\\n', encoding="utf-8")
+    source_path.write_text('{"id":"record-1"}\n', encoding="utf-8")
     (processed_dir / "validation.jsonl").write_text(
-        '{"input_ids":[1,2]}\\n', encoding="utf-8"
+        '{"input_ids":[1,2]}\n', encoding="utf-8"
     )
     (processed_dir / "manifest.json").write_text(
         json.dumps(
@@ -164,3 +165,74 @@ def test_validation_provenance_rejects_wrong_source_hash(tmp_path, monkeypatch):
 
     with pytest.raises(ValueError, match="Raw validation split"):
         validate_preprocessing_provenance()
+
+
+def test_validation_loader_defaults_to_the_complete_file(tmp_path, monkeypatch):
+    path = tmp_path / "validation.jsonl"
+    records = [
+        {
+            "id": f"record-{index}",
+            "question": "Question?",
+            "pre_text": [],
+            "post_text": [],
+            "table": [],
+            "exe_ans": "1",
+        }
+        for index in range(3)
+    ]
+    path.write_text(
+        "".join(json.dumps(record) + "\n" for record in records),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(evaluator, "VALIDATION_PATH", path)
+
+    assert len(load_validation_records()) == 3
+    assert len(load_validation_records(1)) == 1
+
+
+def test_validation_sampling_is_reproducible_and_id_based(tmp_path, monkeypatch):
+    path = tmp_path / "validation.jsonl"
+    records = [
+        {
+            "id": f"record-{index}",
+            "question": "Question?",
+            "pre_text": [],
+            "post_text": [],
+            "table": [],
+            "exe_ans": "1",
+        }
+        for index in range(10)
+    ]
+    path.write_text(
+        "".join(json.dumps(record) + "\n" for record in records),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(evaluator, "VALIDATION_PATH", path)
+
+    first = load_validation_records(4, sample_seed=42)
+    second = load_validation_records(4, sample_seed=42)
+    other_seed = load_validation_records(4, sample_seed=7)
+
+    assert [row["id"] for row in first] == [row["id"] for row in second]
+    assert len({row["id"] for row in first}) == 4
+    assert [row["id"] for row in first] != [row["id"] for row in other_seed]
+
+
+def test_validation_loader_rejects_duplicate_record_ids(tmp_path, monkeypatch):
+    path = tmp_path / "validation.jsonl"
+    record = {
+        "id": "duplicate",
+        "question": "Question?",
+        "pre_text": [],
+        "post_text": [],
+        "table": [],
+        "exe_ans": "1",
+    }
+    path.write_text(
+        json.dumps(record) + "\n" + json.dumps(record) + "\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(evaluator, "VALIDATION_PATH", path)
+
+    with pytest.raises(ValueError, match="Duplicate validation record ID"):
+        load_validation_records()

@@ -7,6 +7,7 @@ from finetunex.evaluation.finqa_executor import (
     execute_program,
     parse_number,
 )
+from finetunex.evaluation.finqa_reference import reference_execute_program
 
 
 def test_parse_integer_and_decimal():
@@ -121,10 +122,16 @@ def test_rejects_invalid_table_cell():
         execute_program("table_sum(revenue, none)", table)
 
 
-def test_rejects_empty_table_row():
+def test_empty_table_sum_matches_official_evaluator():
+    table = [["revenue"]]
+    assert execute_program("table_sum(revenue, none)", table) == 0
+
+
+@pytest.mark.parametrize("operation", ["table_max", "table_min", "table_average"])
+def test_empty_table_aggregations_without_defined_result_raise(operation):
     table = [["revenue"]]
     with pytest.raises(FinQAExecutionError):
-        execute_program("table_sum(revenue, none)", table)
+        execute_program(f"{operation}(revenue, none)", table)
 
 
 def test_rejects_non_finite_number():
@@ -145,3 +152,22 @@ def test_rejects_complex_exponentiation_result():
 def test_rejects_exponentiation_overflow():
     with pytest.raises(FinQAExecutionError):
         execute_program("exp(10, 10000)", [])
+
+
+def test_reference_executor_matches_custom_arithmetic():
+    program = "subtract(125, 100), divide(#0, 5)"
+    assert reference_execute_program(program, []) == execute_program(program, [])
+
+
+def test_reference_executor_matches_custom_table_aggregation():
+    table = [["Revenue", "$ 100", "$ 200", "$ 300"]]
+    program = "table_sum(Revenue, none)"
+    assert reference_execute_program(program, table) == execute_program(program, table)
+
+
+def test_reference_executor_resolves_table_row_references():
+    table = [["yes", "10", "20"]]
+    program = "greater(2, 1), table_sum(#0, none)"
+
+    assert reference_execute_program(program, table) == 30
+    assert execute_program(program, table) == 30

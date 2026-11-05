@@ -53,35 +53,38 @@ projection, prompt builder, evidence budget, greedy decoding, parser, executor,
 and answer matcher. Each prediction stores a SHA-256 hash of the exact prompt
 so paired runs can be checked before comparing metrics.
 
-Run the unadapted model:
+Run the unadapted model on all 883 validation examples:
 
 ```bash
-python scripts/evaluate_finqa_model.py \\
-  --base-model \\
-  --limit 32 \\
-  --max-new-tokens 128 \\
-  --evidence-budget 1024 \\
-  --output-dir artifacts/evaluation/v3-base-32
+python scripts/evaluate_finqa_model.py \
+  --base-model \
+  --max-new-tokens 128 \
+  --evidence-budget 1024 \
+  --output-dir artifacts/evaluation/v4-base-full
 ```
 
-Run the adapter with the same evaluation settings:
+Run the adapter with the same full-validation settings:
 
 ```bash
-python scripts/evaluate_finqa_model.py \\
-  --checkpoint artifacts/checkpoints/<checkpoint-name> \\
-  --limit 32 \\
-  --max-new-tokens 128 \\
-  --evidence-budget 1024 \\
-  --output-dir artifacts/evaluation/v3-adapter-32
+python scripts/evaluate_finqa_model.py \
+  --checkpoint artifacts/checkpoints/<checkpoint-name> \
+  --max-new-tokens 128 \
+  --evidence-budget 1024 \
+  --output-dir artifacts/evaluation/v4-adapter-full
 ```
+
+For a quick smoke sample, add `--limit 32 --sample-seed 42` and use separate
+output directories. The sample is selected deterministically by record ID;
+it is not the first 32 records and must not be reported as full-validation
+accuracy.
 
 After both runs finish, verify the paired comparison:
 
 ```bash
 python scripts/compare_finqa_evaluations.py \\
-  --base-dir artifacts/evaluation/v3-base-32 \\
-  --adapter-dir artifacts/evaluation/v3-adapter-32 \\
-  --output artifacts/evaluation/paired-comparison.json
+  --base-dir artifacts/evaluation/v4-base-full \\
+  --adapter-dir artifacts/evaluation/v4-adapter-full \\
+  --output artifacts/evaluation/v4-paired-full-comparison.json
 ```
 
 The comparison utility fails closed if validation/configuration provenance,
@@ -89,10 +92,10 @@ evaluation settings, record ordering, expected answers, or exact prompt hashes
 differ. It reports adapter-minus-base deltas; it does not claim statistical
 significance from a small pilot subset.
 
-Do not compare the runs unless their ordered record IDs and per-record
-`prompt_sha256` values match. A 32-example prefix is a smoke benchmark, not
-a full validation result and not a test-set result. Keep the test split held
-out until model and evaluation decisions are frozen.
+Do not compare runs unless their ordered record IDs and per-record
+`prompt_sha256` values match. A limited deterministic sample is a smoke
+benchmark, not a full validation result or a test-set result. Keep the test
+split held out until model and evaluation decisions are frozen.
 
 ## Prompt contract and checkpoint compatibility
 
@@ -115,6 +118,44 @@ the tokenized train/validation artifacts, train a new adapter, and evaluate
 that adapter against a base-model run produced with the same prompt version.
 The v3 pilot checkpoint and its metrics are historical and must not be presented
 as v4 results.
+
+## Training and evaluation interpretation
+
+The trainer selects checkpoints by the lowest token-weighted validation loss.
+That is a language-model objective, not FinQA answer accuracy. A selected
+checkpoint must still pass generation-level evaluation on the same validation
+records and prompts as the base model. Runs using
+`--max-train-batches` or `--max-validation-batches` are limited smoke runs;
+they are not full-dataset training or validation results.
+
+## Gold-program executor audit
+
+Run:
+
+```bash
+python scripts/evaluate_gold_programs.py
+```
+
+The audit compares the project executor with an independent interpreter of
+the upstream FinQA evaluator's arithmetic and table semantics. Its report
+separates expected-answer mismatches from disagreements between the two
+executors. The current command is restricted to train and validation. A prior one-off
+executor QA run also inspected test labels, so do not describe the test split
+as a pristine untouched holdout or use it for model-selection decisions.
+
+## Evidence retrieval audit
+
+Run the offline audit after preprocessing:
+
+```bash
+python scripts/audit_finqa_evidence.py
+```
+
+It verifies the raw and tokenized validation hashes against the preprocessing
+manifest, then reports complete gold-evidence coverage and separate text/table
+evidence recall. Gold annotations are used only by this audit, never by the
+retriever or inference prompt. Review the report before interpreting model
+errors.
 
 ## FastAPI inference
 
@@ -161,7 +202,7 @@ Build and start the service after exporting the local adapter and Hugging Face
 cache directories:
 
 ```bash
-export FINETUNEX_CHECKPOINT="$PWD/artifacts/checkpoints/<v3-checkpoint-name>"
+export FINETUNEX_CHECKPOINT="$PWD/artifacts/checkpoints/<v4-checkpoint-name>"
 export HF_CACHE_PATH="$HOME/.cache/huggingface"
 docker compose up --build
 ```
@@ -185,13 +226,14 @@ are not already present in the mounted cache. The service listens on port
 - [x] Repository foundation and pinned FinQA/model revisions.
 - [x] FinQA preprocessing pipeline with train/validation provenance and test-split isolation.
 - [x] FinQA program parser and deterministic executor.
-- [x] Gold-program execution audit across all 8,281 examples.
+- [x] Gold-program executor audit now restricted to train and validation; prior one-off QA also inspected test labels.
 - [x] Versioned v3 reasoning prompt and controlled 32-example pilot.
 - [x] Identified and reproduced the v3 training/inference evidence-budget mismatch.
 - [x] Implemented v4 target-independent prompt budgeting across preprocessing, evaluation, and API.
-- [ ] Regenerate v4 train/validation artifacts and verify exact prompt parity on all 883 validation examples.
-- [ ] Train a fresh v4 LoRA adapter and run paired base/adapter evaluation.
+- [x] Regenerate v4 train/validation artifacts and verify exact prompt parity on all 883 validation examples.
+- [ ] Train a fresh v4 LoRA adapter and run paired base/adapter evaluation after retrieval and baseline diagnostics.
 - [ ] Run a full 883-example validation comparison before making model-quality claims.
+- [x] Offline gold-evidence recall audit tooling (full validation report pending).
 - [x] FastAPI inference implementation (real checkpoint-backed smoke test pending).
 - [x] CUDA Docker deployment definition (Linux NVIDIA build/runtime validation pending).
 - [ ] Confirm GitHub Actions CI on the final pull-request chain.
@@ -208,5 +250,6 @@ The earlier v3 32-example pilot produced these results:
 
 The pilot showed improved program formatting and executability, but weak
 numerical reasoning. These measurements used the v3 prompt-budget policy and
-are not v4 results. The v4 pipeline must be re-preprocessed, retrained, and
-evaluated before any updated model-quality claim is made.
+are not v4 results. V4 preprocessing and full prompt parity are complete. A fresh v4 adapter
+and full validation comparison are still required before updated model-quality
+claims can be made.

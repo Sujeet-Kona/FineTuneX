@@ -84,11 +84,6 @@ def _resolve_argument(
 
 def _parse_table_row(row: Sequence[object]) -> list[float]:
     """Parse all numeric cells in a selected table row."""
-    if len(row) < 2:
-        raise FinQAExecutionError(
-            "Table aggregation requires at least one numeric cell."
-        )
-
     values: list[float] = []
 
     for cell in row[1:]:
@@ -113,17 +108,33 @@ def _execute_step(
     operation = step.operation
 
     if operation.startswith("table_"):
-        # The official FinQA evaluator ignores the second table-operation argument.
+        # This executor supports references in table row labels and ignores the
+        # second argument. The upstream evaluator has a bug in its reference
+        # branch; the official differential audit checks whether gold data uses it.
+        row_label: float | str = step.arg1
         if "#" in step.arg1:
-            raise FinQAExecutionError(
-                "Table aggregation requires a row-label argument."
-            )
+            reference_match = _REFERENCE_PATTERN.fullmatch(step.arg1)
+            if reference_match is None:
+                raise FinQAExecutionError(
+                    f"Malformed table row reference: {step.arg1!r}."
+                )
+
+            reference_index = int(reference_match.group(1))
+            if reference_index >= step_index:
+                raise FinQAExecutionError(
+                    f"Reference #{reference_index} must point to an earlier step."
+                )
+            if reference_index >= len(results):
+                raise FinQAExecutionError(
+                    f"Reference #{reference_index} does not exist."
+                )
+            row_label = results[reference_index]
 
         selected_row: Sequence[object] | None = None
 
         # Match the original FinQA evaluator: the last duplicate label wins.
         for row in table:
-            if row and str(row[0]).strip() == step.arg1:
+            if row and row[0] == row_label:
                 selected_row = row
 
         if selected_row is None:
