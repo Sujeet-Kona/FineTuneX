@@ -234,3 +234,19 @@ def test_percentage_step_annotation_rounding_at_recorded_precision():
         )
     )
     assert result["steps_audit"]["status"] == "consistent"
+
+
+def test_parse_error_is_classified_without_crashing():
+    result = audit_record(_record(program="not-a-program"))
+    assert result["program_status"] == "parse_error"
+    assert result["classification"] == "requires_manual_review"
+    assert result["steps_audit"]["status"] == "not_checked"
+
+
+def test_audit_record_retains_raw_and_parsed_step_diagnostics():
+    result = audit_record(_record())
+    assert result["raw_steps"] == _record()["steps"]
+    assert result["parsed_steps"] == [
+        {"operation": "add", "arg1": "100", "arg2": "200"},
+        {"operation": "divide", "arg1": "#0", "arg2": "2"},
+    ]
