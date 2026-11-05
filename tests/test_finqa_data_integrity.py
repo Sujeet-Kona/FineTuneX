@@ -463,7 +463,6 @@ def test_plain_numeric_step_disagreement_remains_confirmed():
     assert "steps_program_disagreement" in result["flags"]
 
 
-
 def test_human_percentage_answer_matches_program_already_in_percentage_points():
     result = audit_record(
         _record(
