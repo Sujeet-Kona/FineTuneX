@@ -64,24 +64,21 @@ The vendored execution oracle is based on `czyssrs/FinQA/code/evaluate/evaluate.
 
 ## Validation status
 
-- CI run `41982141777`, commit `29b4532`: Ruff lint passed, Ruff format passed, **328 tests passed**, 1 warning.
-- That green run includes the official execution oracle, corrected five-decimal comparison, all-three-split audit command, and empty-row table-sum behavior.
-- The later `program_re` AST work and its regression tests are on newer commits. Latest observed CI run `41983015211` was still in progress at the time of this report; do not treat it as green.
-- Local Mac `ruff check`, `ruff format --check`, and `pytest`: **MISSING**.
-- Official differential over the 8,281 source records: **MISSING**.
-- Full annotation audit and reviewed real-record samples: **MISSING**.
-- The checker now separates confirmed step mismatches from ambiguous percentage annotations; the latest checker changes still require CI confirmation and a fresh local full-split audit.
+- Latest PR #6 CI run `41985206107`, commit `a41b85c2b709c1ce4d9984d264c34154bc38e240`: **success**.
+- Local Mac validation at `a41b85c`: `ruff check .` passed, `ruff format --check .` passed, **341 tests passed**, 1 Starlette deprecation warning.
+- Official executor differential: all 8,281 examples across train (6,251), validation (883), and test (1,147) matched the vendored official evaluator; zero differences.
+- Full annotation audit generated locally: 8,281 examples; 6,559 internally consistent; 1,722 require manual review. Flag counts: 640 `exe_ans` disagreements, 479 cases where the human answer agrees despite an `exe_ans` disagreement, 893 human-answer/program disagreements, 626 confirmed step mismatches, 345 ambiguous step annotations, and zero unexecutable programs or `program_re` structural failures.
+- Representative samples confirm the percentage fix for IPG and LLY while preserving the genuine ANSS program/answer mismatch. The precision/format label is being replaced with an evidence-limited diagnostic name; the 479 records remain manual-review cases.
+- The full sample export and broader manual review are not yet complete. The full audit has not been frozen.
 - No source data has been edited.
 
 There are 23 test files in the current repository tree. CI tests are synthetic/offline tests; they do not establish correctness on the pinned downloaded dataset or MPS hardware.
 
 ## Remaining blockers
 
-- Execute `scripts/differential_finqa_executor.py` on train, validation, and test; inspect every difference.
-- Execute `scripts/audit_finqa_annotations.py` on all three source JSONL splits.
-- Inspect at least 20 real records with raw program, raw `program_re`, raw steps, parsed steps, and computed values.
+- Finish representative manual review: inspect at least 20 real records with raw program, raw `program_re`, raw steps, parsed steps, and computed values.
 - Export at least 10 real examples per annotation category (or all if fewer) under `docs/audit_samples/`.
-- Finalize `docs/DATA_POLICY.md` counts after the local audit; current automatic exclusions remain zero.
+- Finalize `docs/DATA_POLICY.md` with the complete per-split counts and audit artifact provenance; current automatic exclusions remain zero.
 - Verify raw-to-processed preservation, shared prompt byte equality, target/EOS masking, Qwen3 thinking/template behavior, and token-length percentiles.
 - Validate the scorer with gold, corrupted, and garbage programs; manually inspect at least 20 base-model generations.
 - Run the frozen validation baseline and only then the MPS LoRA pilot. No training has been run or claimed.
