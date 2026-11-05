@@ -62,9 +62,7 @@ def main() -> None:
     source_hash = sha256(source)
     processed_hash = sha256(processed)
     if source_hash != manifest["dataset"]["source_split_sha256"]["validation"]:
-        raise ValueError(
-            "Raw validation hash does not match preprocessing manifest"
-        )
+        raise ValueError("Raw validation hash does not match preprocessing manifest")
     if processed_hash != manifest["splits"]["validation"]["output_sha256"]:
         raise ValueError(
             "Tokenized validation hash does not match preprocessing manifest"
@@ -96,17 +94,11 @@ def main() -> None:
     metrics = report["overall"]
     print("FINQA EVIDENCE RETRIEVAL AUDIT")
     print(f"Examples: {report['examples']}")
-    print(
-        "Complete evidence coverage: "
-        f"{metrics['complete_evidence_coverage']:.2%}"
-    )
+    print(f"Complete evidence coverage: {metrics['complete_evidence_coverage']:.2%}")
     print(f"Evidence-unit recall: {metrics['evidence_unit_recall']:.2%}")
     print(f"Text evidence recall: {metrics['text_evidence_recall']:.2%}")
     print(f"Table evidence recall: {metrics['table_evidence_recall']:.2%}")
-    print(
-        "Examples with missing evidence: "
-        f"{len(report['missing_evidence_examples'])}"
-    )
+    print(f"Examples with missing evidence: {len(report['missing_evidence_examples'])}")
     print(f"Report: {output}")
 
 
