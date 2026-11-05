@@ -26,8 +26,8 @@ from finetunex.evaluation.finqa_parser import (
 
 _STEP_OP = re.compile(r"^([a-z_]+)\d+-\d+$")
 _ANSWER = re.compile(
-    r"^\\s*[$€£]?\\s*([-+]?(?:\\d[\\d,]*\\.?\\d*|\\.\\d+))"
-    r"\\s*(%|million|billion|thousand)?\\s*$",
+    r"^\s*[$€£]?\s*([-+]?(?:\d[\d,]*\.?\d*|\.\d+))"
+    r"\s*(%|million|billion|thousand)?\s*$",
     re.IGNORECASE,
 )
 
@@ -85,7 +85,7 @@ def _compare_step_annotations(
     issues: list[dict[str, Any]] = []
     for index, step in enumerate(program_steps):
         op_annotation = arrays["op"][index]
-        op_match = _STEP_OP.fullmatch(op_annotation) if isinstance(op_annotation, str) else None
+        op_match = (\n            _STEP_OP.fullmatch(op_annotation)\n            if isinstance(op_annotation, str)\n            else None\n        )
         if op_match is None or op_match.group(1) != step.operation:
             issues.append({
                 "step": index,
@@ -269,7 +269,7 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
         "policy": {
             "source_records_modified": False,
             "automatic_exclusions": 0,
-            "human_answer_parser": "single numeric scalar with optional %, thousand, million, billion",
+            "human_answer_parser": (\n                "single numeric scalar with optional %, thousand, million, billion"\n            ),
             "step_numeric_tolerance": "relative 1e-5, absolute 1e-5",
             "exe_ans_numeric_tolerance": "exact after five-decimal rounding semantics",
             "ambiguous_human_answers": "flagged for manual review; never guessed",
