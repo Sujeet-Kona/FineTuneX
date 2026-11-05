@@ -113,17 +113,32 @@ def _execute_step(
     operation = step.operation
 
     if operation.startswith("table_"):
-        # The official FinQA evaluator ignores the second table-operation argument.
+        # The official evaluator resolves intermediate references in row labels
+        # and ignores the second table-operation argument.
+        row_label: float | str = step.arg1
         if "#" in step.arg1:
-            raise FinQAExecutionError(
-                "Table aggregation requires a row-label argument."
-            )
+            reference_match = _REFERENCE_PATTERN.fullmatch(step.arg1)
+            if reference_match is None:
+                raise FinQAExecutionError(
+                    f"Malformed table row reference: {step.arg1!r}."
+                )
+
+            reference_index = int(reference_match.group(1))
+            if reference_index >= step_index:
+                raise FinQAExecutionError(
+                    f"Reference #{reference_index} must point to an earlier step."
+                )
+            if reference_index >= len(results):
+                raise FinQAExecutionError(
+                    f"Reference #{reference_index} does not exist."
+                )
+            row_label = results[reference_index]
 
         selected_row: Sequence[object] | None = None
 
         # Match the original FinQA evaluator: the last duplicate label wins.
         for row in table:
-            if row and str(row[0]).strip() == step.arg1:
+            if row and row[0] == row_label:
                 selected_row = row
 
         if selected_row is None:
