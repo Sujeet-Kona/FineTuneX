@@ -154,11 +154,12 @@ def create_app(
             return await call_next(request)
 
         started_at = perf_counter()
-        route = request.scope.get("route")
-        route_label = getattr(route, "path", "unmatched")
+        route_label = "unmatched"
         status_code = "500"
         try:
             response = await call_next(request)
+            route = request.scope.get("route")
+            route_label = getattr(route, "path", "unmatched")
             status_code = str(response.status_code)
             return response
         finally:
