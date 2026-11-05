@@ -84,11 +84,6 @@ def _resolve_argument(
 
 def _parse_table_row(row: Sequence[object]) -> list[float]:
     """Parse all numeric cells in a selected table row."""
-    if len(row) < 2:
-        raise FinQAExecutionError(
-            "Table aggregation requires at least one numeric cell."
-        )
-
     values: list[float] = []
 
     for cell in row[1:]:
