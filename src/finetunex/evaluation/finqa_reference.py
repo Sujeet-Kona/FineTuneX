@@ -54,13 +54,9 @@ def _reference_argument(
         try:
             result = results[int(value.replace("#", ""))]
         except (ValueError, KeyError) as exc:
-            raise ReferenceExecutionError(
-                f"Invalid reference: {value!r}"
-            ) from exc
+            raise ReferenceExecutionError(f"Invalid reference: {value!r}") from exc
         if isinstance(result, str):
-            raise ReferenceExecutionError(
-                "A text result cannot be used as a number"
-            )
+            raise ReferenceExecutionError("A text result cannot be used as a number")
         return result
     return _reference_number(value)
 
@@ -90,28 +86,19 @@ def reference_execute_program(
                     ) from exc
 
             if row_label not in table_by_label:
-                raise ReferenceExecutionError(
-                    f"Table row not found: {row_label!r}"
-                )
+                raise ReferenceExecutionError(f"Table row not found: {row_label!r}")
 
             numeric_cells = []
             for cell in table_by_label[row_label]:
                 if not isinstance(cell, str):
-                    raise ReferenceExecutionError(
-                        "Table cells must be strings"
-                    )
+                    raise ReferenceExecutionError("Table cells must be strings")
                 cleaned = (
-                    cell.replace("$", "")
-                    .strip()
-                    .split("(", maxsplit=1)[0]
-                    .strip()
+                    cell.replace("$", "").strip().split("(", maxsplit=1)[0].strip()
                 )
                 numeric_cells.append(_reference_number(cleaned))
 
             if not numeric_cells:
-                raise ReferenceExecutionError(
-                    "Table row contains no numeric cells"
-                )
+                raise ReferenceExecutionError("Table row contains no numeric cells")
             if operation == "table_max":
                 result = max(numeric_cells)
             elif operation == "table_min":
@@ -121,9 +108,7 @@ def reference_execute_program(
             elif operation == "table_average":
                 result = sum(numeric_cells) / len(numeric_cells)
             else:
-                raise ReferenceExecutionError(
-                    f"Unsupported operation: {operation}"
-                )
+                raise ReferenceExecutionError(f"Unsupported operation: {operation}")
         else:
             left = _reference_argument(step.arg1, results)
             right = _reference_argument(step.arg2, results)
