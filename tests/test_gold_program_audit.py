@@ -4,8 +4,8 @@ import json
 
 import pytest
 
-from scripts import evaluate_gold_programs as audit
 from finetunex.evaluation.finqa_executor import FinQAExecutionError
+from scripts import evaluate_gold_programs as audit
 
 
 def test_reference_audit_runs_even_when_custom_executor_fails(tmp_path, monkeypatch):
@@ -25,7 +25,9 @@ def test_reference_audit_runs_even_when_custom_executor_fails(tmp_path, monkeypa
         raise FinQAExecutionError("deliberate custom-executor failure")
 
     monkeypatch.setattr(audit, "execute_program", custom_failure)
-    monkeypatch.setattr(audit, "reference_execute_program", lambda program, table: 3)
+    monkeypatch.setattr(
+        audit, "reference_execute_program", lambda program, table: 3
+    )
 
     result = audit.evaluate_split("validation")
 
