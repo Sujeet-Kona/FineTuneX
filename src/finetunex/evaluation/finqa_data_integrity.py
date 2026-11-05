@@ -261,7 +261,8 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
         else:
             try:
                 expected_number = parse_number(str(expected))
-                # The official evaluator rounds only the computed final result.\n                exe_match = round(computed, 5) == expected_number
+                # The official evaluator rounds only the computed final result.
+                exe_match = round(computed, 5) == expected_number
                 result["exe_ans_match"] = exe_match
                 if not exe_match:
                     result["flags"].append("program_exe_ans_disagreement")

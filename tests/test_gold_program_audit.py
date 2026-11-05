@@ -41,7 +41,8 @@ def test_reference_audit_runs_even_when_custom_executor_fails(tmp_path, monkeypa
 @pytest.mark.parametrize(
     ("predicted", "expected", "matches"),
     [
-        (0.33333, "0.333333", False),\n        (0.33333, "0.33333", True),
+        (0.33333, "0.333333", False),
+        (0.33333, "0.33333", True),
         (0.33331, "0.333333", False),
         ("yes", "yes", True),
         ("no", "yes", False),
