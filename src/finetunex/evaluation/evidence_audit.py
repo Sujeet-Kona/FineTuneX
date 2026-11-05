@@ -6,8 +6,8 @@ to the retriever, prompt builder, training target, or inference path.
 
 from __future__ import annotations
 
+import collections
 import re
-from collections import defaultdict
 from typing import Any
 
 
@@ -119,7 +119,7 @@ def audit_evidence_records(
         raise ValueError("Cannot audit an empty validation split")
 
     overall = _new_bucket()
-    by_strategy: dict[str, dict[str, int]] = defaultdict(_new_bucket)
+    by_strategy: dict[str, dict[str, int]] = collections.defaultdict(_new_bucket)
     missing_examples: list[dict[str, Any]] = []
 
     for position, (source, processed) in enumerate(
