@@ -10,9 +10,10 @@ without copying its model, dataset, or hardware assumptions.
 2. Config-driven LoRA fine-tuning.
 3. Controlled base-model and adapter evaluation.
 4. Adapter checkpointing and merged-model export.
-5. FastAPI inference.
-6. Docker Compose deployment.
-7. Automated tests and linting.
+5. FastAPI inference with Prometheus request metrics.
+6. Optional MLflow experiment tracking for training parameters, epoch metrics, configuration files, and selected checkpoint artifacts.
+7. Docker Compose deployment.
+8. Automated tests and linting.
 
 ## Deliberately omitted
 
@@ -32,6 +33,8 @@ without copying its model, dataset, or hardware assumptions.
   utilities; do not claim this executes model training.
 
 ## Commands
+
+MLflow is an optional extra (`pip install -e ".[tracking]"`) and remains disabled unless enabled in `configs/experiment.yaml`. Prometheus instrumentation is installed with the API extra and exposed at `/metrics`; labels are restricted to method, route template, and status code.
 
 See the repository Makefile. Training smoke runs are explicitly limited and
 must not be reported as full training. Base and adapter generation evaluations
