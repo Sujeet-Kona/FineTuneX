@@ -163,3 +163,9 @@ def test_reference_executor_matches_custom_table_aggregation():
     table = [["Revenue", "$ 100", "$ 200", "$ 300"]]
     program = "table_sum(Revenue, none)"
     assert reference_execute_program(program, table) == execute_program(program, table)
+
+def test_reference_executor_resolves_table_row_references():
+    table = [["yes", "10", "20"]]
+    program = "greater(2, 1), table_sum(#0, none)"
+
+    assert reference_execute_program(program, table) == 30
