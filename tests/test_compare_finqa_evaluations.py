@@ -51,6 +51,7 @@ def make_rows():
         },
     ]
 
+
 def test_compares_only_identical_prompted_examples():
     result = compare(
         make_summary("base_model"),
