@@ -47,7 +47,7 @@ def test_detects_program_answer_conflict():
     assert "program_human_answer_disagreement" in result["flags"]
 
 
-def test_flags_exe_ans_disagreement_when_human_answer_agrees_without_claiming_precision():
+def test_exe_ans_disagreement_with_matching_human_answer_stays_manual_review():
     result = audit_record(
         _record(
             program="multiply(423897556, 87.32)",
