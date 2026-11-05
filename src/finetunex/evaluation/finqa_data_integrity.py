@@ -284,11 +284,6 @@ def _compare_step_annotations(
     issues: list[dict[str, Any]] = []
     for index, step in enumerate(program_steps):
         op_annotation = arrays["op"][index]
-        op_match = (
-            _STEP_OP.fullmatch(op_annotation)
-            if isinstance(op_annotation, str)
-            else None
-        )
         annotated_operation = _normalize_step_operation(
             op_annotation, step.operation
         )
