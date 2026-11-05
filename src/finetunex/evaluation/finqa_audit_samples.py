@@ -91,9 +91,9 @@ def _select_stratified(
             key=lambda item: hashlib.sha256(
                 (
                     category
-                    + "\\0"
+                    + "\0"
                     + split
-                    + "\\0"
+                    + "\0"
                     + str(item["source_record"]["id"])
                 ).encode("utf-8")
             ).hexdigest(),
@@ -185,7 +185,7 @@ def export_audit_samples(
         output_path = output_dir / f"{category}.jsonl"
         with output_path.open("w", encoding="utf-8") as file:
             for item in selected:
-                file.write(json.dumps(item, ensure_ascii=False) + "\\n")
+                file.write(json.dumps(item, ensure_ascii=False) + "\n")
         split_counts = {
             split: sum(item["split"] == split for item in selected)
             for split in ("train", "validation", "test")
@@ -213,7 +213,7 @@ def export_audit_samples(
         "categories": manifest_categories,
     }
     (output_dir / "manifest.json").write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\\n",
+        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
     return manifest
