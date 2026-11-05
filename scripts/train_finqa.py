@@ -260,7 +260,7 @@ def validate_manifest(
 
 
 def package_versions() -> dict[str, str]:
-    import pef
+    import peft
     import transformers
     import yaml
 
