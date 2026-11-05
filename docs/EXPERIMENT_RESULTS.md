@@ -492,8 +492,10 @@ five YAML configs, which contain no credentials.
 - **The test split is not a pristine holdout.** Historical one-off inspection of test
   labels is recorded in `docs/STATE.md`; test stays excluded from scoring-rule
   tuning, model selection and hyperparameter decisions.
-- **Dataset annotation quality.** 1,722 of 8,281 records are flagged for manual
-  review by the integrity audit; nothing is silently dropped. The measured 10.19%
+- **Dataset annotation quality.** 1,270 of 8,281 records are flagged for manual review
+  by the integrity audit under the current six-significant-digit rule
+  (`experiments/finqa_annotation_integrity_v2_sixsig.json`; the superseded pre-fix report
+  counted 1,722); nothing is silently dropped. The measured 10.19%
   is over all 883 records; no clean-subset accuracy is reported because the clean
   subset has not been adjudicated.
 - **Evidence is not in Git.** `artifacts/` and `experiments/` are gitignored, so the

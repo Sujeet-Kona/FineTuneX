@@ -8,10 +8,12 @@ This report distinguishes source changes from executed validation. The user has 
 
 > **Superseded in part on 2026-11-05.** This report describes the PR #6 audit
 > branch. Current work is on `feat/reference-pipeline-without-kubernetes`. The
-> statement above that no base-model inference or MPS training has been run, and
-> the `MISSING` split digests below, are no longer accurate: MPS training, base
-> and adapter evaluations, and the export and serving checks have since been
-> executed. See `docs/EXPERIMENT_RESULTS.md` for the measured record.
+> statement above that no base-model inference or MPS training has been run, the
+> `MISSING` split digests below, and the claim that no base-model report, trained
+> adapter, paired evaluation or fresh-clone reproduction is available, are no longer
+> accurate: MPS training, base and adapter evaluations, the export and serving checks,
+> and a clean-clone data/tokenization reproduction have since been executed. See
+> `docs/EXPERIMENT_RESULTS.md` for the measured record.
 
 ## Executive status
 
@@ -169,10 +171,15 @@ There are 26 test files in the current repository tree. CI tests are synthetic/o
   Validation status above). Still open: no test-split run, and no adapter trained at a
   realistic budget, so no model-quality claim exists.
 - Adapter packaging, deterministic inference and the final comparison are done and
-  evidenced. **Fresh-clone reproduction is NOT RUN**: nothing has been cloned from Git
-  into a clean directory to prove a reviewer can rebuild these results, and the
-  `artifacts/` and `experiments/` evidence is gitignored so it does not travel with the
-  repository.
+  evidenced. ~~Fresh-clone reproduction is NOT RUN~~ Done on 2026-11-05: a clean
+  `file://` clone of `5e8ea29` re-ran the test suite, `prepare_dataset.py` and
+  `preprocess_finqa.py`, and produced byte-identical materialized splits and
+  byte-identical tokenized train/validation artifacts. The tokenized `manifest.json`
+  hash does differ, and the difference was isolated to 12 audit counters that only the
+  newer script revision writes, plus the one digest key that covers them. Inference was
+  not re-run in the clone. `artifacts/` and `experiments/` evidence remains gitignored,
+  so it still does not travel with the repository. See the Fresh-clone reproduction
+  section of `docs/EXPERIMENT_RESULTS.md`.
 
 ## Current policy
 
