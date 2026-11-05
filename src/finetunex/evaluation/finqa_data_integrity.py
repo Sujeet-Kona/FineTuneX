@@ -194,10 +194,23 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
     except (FinQAProgramParseError, TypeError) as exc:
         result.update({"program_status": "parse_error", "program_error": str(exc)})
         result["flags"].append("program_parse_error")
-        result["steps_audit"] = {\n            "status": "not_checked",\n            "issues": ["program_parse_error"],\n        }\n        result["classification"] = "requires_manual_review"\n        return result
+        result["steps_audit"] = {
+            "status": "not_checked",
+            "issues": ["program_parse_error"],
+        }
+        result["classification"] = "requires_manual_review"
+        return result
 
     result["program_step_count"] = len(steps)
-    result["parsed_steps"] = [\n        {\n            "operation": step.operation,\n            "arg1": step.arg1,\n            "arg2": step.arg2,\n        }\n        for step in steps\n    ]\n    table = record.get("table", [])
+    result["parsed_steps"] = [
+        {
+            "operation": step.operation,
+            "arg1": step.arg1,
+            "arg2": step.arg2,
+        }
+        for step in steps
+    ]
+    table = record.get("table", [])
     intermediate: list[float | str] = []
     try:
         for index, step in enumerate(steps):
