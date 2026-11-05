@@ -352,3 +352,111 @@ def test_program_re_parser_handles_table_operations():
         )
     )
     assert result["program_re_audit"]["status"] == "consistent"
+
+
+def test_table_average_step_alias_maps_to_table_operation():
+    result = audit_record(
+        _record(
+            program="table_average(revenue, none)",
+            table=[["revenue", "10", "20"]],
+            exe_ans="15",
+            answer="15",
+            steps={
+                "op": ["average1-1"],
+                "arg1": ["revenue"],
+                "arg2": ["none"],
+                "res": ["15"],
+            },
+        )
+    )
+    assert result["steps_audit"]["status"] == "consistent"
+    assert "steps_program_disagreement" not in result["flags"]
+
+
+def test_integer_step_annotation_accepts_explicit_integer_rounding():
+    result = audit_record(
+        _record(
+            program="multiply(607, 18.13)",
+            exe_ans="11004.91",
+            answer="11004.91",
+            steps={
+                "op": ["multiply1-1"],
+                "arg1": ["607"],
+                "arg2": ["18.13"],
+                "res": ["11005"],
+            },
+        )
+    )
+    assert result["steps_audit"]["status"] == "consistent"
+
+
+def test_percentage_step_annotation_is_ambiguous_when_scale_does_not_match():
+    result = audit_record(
+        _record(
+            program="divide(100, 100)",
+            exe_ans="1",
+            answer="1",
+            steps={
+                "op": ["divide1-1"],
+                "arg1": ["100"],
+                "arg2": ["100"],
+                "res": ["1%"],
+            },
+        )
+    )
+    assert result["steps_audit"]["status"] == "ambiguous"
+    assert "steps_annotation_ambiguous" in result["flags"]
+    assert "steps_program_disagreement" not in result["flags"]
+
+
+def test_percentage_step_annotation_matches_ratio_to_percent_convention():
+    result = audit_record(
+        _record(
+            program="divide(1786.2, 2807.0)",
+            exe_ans="0.63634",
+            answer="63.6%",
+            steps={
+                "op": ["divide1-1"],
+                "arg1": ["1786.2"],
+                "arg2": ["2807.0"],
+                "res": ["63.6%"],
+            },
+        )
+    )
+    assert result["steps_audit"]["status"] == "consistent"
+
+
+def test_percentage_step_sign_conflict_is_ambiguous_not_confirmed_mismatch():
+    result = audit_record(
+        _record(
+            program="divide(subtract(440.9, 442.3), 442.3)",
+            exe_ans="-0.00317",
+            answer="0.3%",
+            steps={
+                "op": ["minus2-1", "divide2-2"],
+                "arg1": ["440.9", "#0"],
+                "arg2": ["442.3", "442.3"],
+                "res": ["-1.4", "0.3%"],
+            },
+        )
+    )
+    assert result["steps_audit"]["status"] == "ambiguous"
+    assert "steps_annotation_ambiguous" in result["flags"]
+
+
+def test_plain_numeric_step_disagreement_remains_confirmed():
+    result = audit_record(
+        _record(
+            program="divide(2.5, 1.6)",
+            exe_ans="1.5625",
+            answer="1.5625",
+            steps={
+                "op": ["divide1-1"],
+                "arg1": ["2.5"],
+                "arg2": ["1.6"],
+                "res": ["0.9"],
+            },
+        )
+    )
+    assert result["steps_audit"]["status"] == "mismatch"
+    assert "steps_program_disagreement" in result["flags"]
