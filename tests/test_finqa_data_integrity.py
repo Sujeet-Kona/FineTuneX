@@ -308,18 +308,13 @@ def test_exe_ans_is_not_rounded_before_official_comparison():
     assert "program_exe_ans_disagreement" in result["flags"]
 
 
-
 def test_program_re_matches_flat_program_expression():
-    result = audit_record(
-        _record(program_re="divide(add(100, 200), 2)")
-    )
+    result = audit_record(_record(program_re="divide(add(100, 200), 2)"))
     assert result["program_re_audit"]["status"] == "consistent"
 
 
 def test_program_re_disagreement_is_reported():
-    result = audit_record(
-        _record(program_re="divide(add(100, 200), 3)")
-    )
+    result = audit_record(_record(program_re="divide(add(100, 200), 3)"))
     assert result["program_re_audit"]["status"] == "mismatch"
     assert "program_re_disagreement" in result["flags"]
 

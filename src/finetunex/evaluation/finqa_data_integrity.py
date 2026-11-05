@@ -204,9 +204,7 @@ def _linear_program_expression(steps: tuple[Any, ...]) -> tuple[Any, ...]:
                 arguments.append(expressions[reference_index])
             else:
                 arguments.append(
-                    _normalize_program_atom(
-                        argument, step.operation, argument_index
-                    )
+                    _normalize_program_atom(argument, step.operation, argument_index)
                 )
         expressions.append((step.operation, *arguments))
     return expressions[-1]
