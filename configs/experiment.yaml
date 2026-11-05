@@ -2,7 +2,10 @@ experiment:
   tracking:
     enabled: false
     backend: mlflow
-    tracking_uri: mlruns
+    # MLflow 3.x refuses the plain file-store backend (e.g. `mlruns`) unless
+    # MLFLOW_ALLOW_FILE_STORE=true, so the default uses SQLite. Like the old path,
+    # a relative SQLite URI resolves against the working directory.
+    tracking_uri: sqlite:///mlruns.db
     experiment_name: finetunex-finqa
     log_system_metrics: false
   artifacts:

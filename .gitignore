@@ -16,6 +16,9 @@ artifacts/*
 
 # Local MLflow tracking store
 mlruns/
+mlruns.db
+mlruns.db-shm
+mlruns.db-wal
 
 experiments/*
 !experiments/README.md

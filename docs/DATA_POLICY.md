@@ -13,14 +13,40 @@
 
 ## Official split use
 
-The dataset card reports the following official split sizes. These are expected counts; the exact local materialized counts remain **MISSING** until checked against the pinned revision.
+The dataset card reports the following official split sizes. The local materialized
+counts were verified on 2026-11-05 against `data/processed/finqa/*.jsonl` and match the
+card exactly, with no records added, dropped or moved between splits.
 
-| Split | Expected records | Permitted use |
-|---|---:|---|
-| Train | 6,251 | Supervised training; training-side diagnostics |
-| Validation | 883 | Development, prompt/scorer debugging, baseline and adapter selection |
-| Test | 1,147 | Final report only, after all decisions and configurations are frozen |
-| **Total** | **8,281** | Complete source dataset |
+| Split | Expected records | Local records | SHA-256 over ordered record IDs |
+|---|---:|---:|---|
+| Train | 6,251 | 6,251 | `8bb63636e7bf2e0cd0f195ef0928eadb6f9d52ae2c6781614975ddb79ff45e35` |
+| Validation | 883 | 883 | `7c8aad37cf933545beeed0ed35080eb42b3988e060a122366e2442af098a3d2e` |
+| Test | 1,147 | 1,147 | `f0d1e2a743b3d6a6b155e15d63e79f8064574a28e0686c7fba90ef41245b30b6` |
+| **Total** | **8,281** | **8,281** | |
+
+Per-split file digests, as recorded by the integrity audit and the audit-sample manifest
+(both agree):
+
+| Split | SHA-256 of the materialized split file |
+|---|---|
+| Train | `891f7f736f56a8dacee631a1c51d5e19f5d99651d3f91e8d08799dbb79e8e657` |
+| Validation | `8e564eb0f0cb83957f737babd0631c3ede0d6185649803b524c9df5fc65c790a` |
+| Test | `35b9b2c0265784d1a807280eff9fd28a910ea3edb0a4296532a05b1a7340cf62` |
+
+Audit artifact provenance: `experiments/finqa_annotation_integrity_v2_sixsig.json` is the
+current annotation-integrity report (8,281 examples; 7,011 internally consistent; 1,270
+flagged; 0 `exe_ans` disagreements) and was generated with the shipped
+`six_significant_digits_of_exe_ans@6` comparison. The earlier
+`experiments/finqa_annotation_integrity.json` is retained but superseded — it predates
+that fix and its 640 `exe_ans` disagreement flags were precision artifacts. Both reports
+are local, gitignored evidence; `docs/audit_samples/` holds 50 exported samples (10 per
+non-empty category) drawn proportionally from all three splits and was exported from the
+superseded report, so its two `exe_ans` categories are not live review queues.
+
+Permitted use by split is unchanged: train for supervised training and training-side
+diagnostics; validation for development, prompt and scorer debugging, and baseline and
+adapter selection; test for the final report only, after all decisions and
+configurations are frozen.
 
 The 7,134 figure is train plus validation (6,251 + 883), not the total dataset. Keep the official splits; do not repartition or move examples between them.
 
