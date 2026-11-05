@@ -10,7 +10,7 @@ from finetunex.evaluation.finqa_audit_samples import export_audit_samples
 
 def _write_jsonl(path, records):
     path.write_text(
-        "".join(json.dumps(record) + "\n" for record in records),
+        "".join(json.dumps(record) + "\\n" for record in records),
         encoding="utf-8",
     )
 
@@ -101,7 +101,7 @@ def test_exports_all_available_when_category_has_fewer_than_limit(tmp_path):
 def test_refuses_to_export_if_source_changed_after_audit(tmp_path):
     source_dir, audit_path = _fixture(tmp_path)
     source_path = source_dir / "train.jsonl"
-    source_path.write_text(source_path.read_text() + "{}\n", encoding="utf-8")
+    source_path.write_text(source_path.read_text() + "{}\\n", encoding="utf-8")
 
     with pytest.raises(ValueError, match="SHA-256 differs"):
         export_audit_samples(
@@ -122,7 +122,7 @@ def test_rejects_zero_sample_limit(tmp_path):
         )
 
 
-def test_sample_selection_uses_train_validation_test_order(tmp_path):
+def test_sample_selection_is_stratified_across_splits(tmp_path):
     source_dir, audit_path = _fixture(tmp_path)
     output_dir = tmp_path / "samples"
 
@@ -130,8 +130,37 @@ def test_sample_selection_uses_train_validation_test_order(tmp_path):
         source_dir=source_dir,
         audit_path=audit_path,
         output_dir=output_dir,
-        limit_per_category=1,
+        limit_per_category=3,
     )
 
     details = manifest["categories"]["exe_ans_disagreements"]
-    assert details["sample_ids"] == ["train:train-1"]
+    assert details["exported_split_counts"] == {
+        "train": 1,
+        "validation": 1,
+        "test": 1,
+    }
+    assert {item.split(":")[0] for item in details["sample_ids"]} == {
+        "train",
+        "validation",
+        "test",
+    }
+
+
+def test_sample_selection_is_deterministic(tmp_path):
+    source_dir, audit_path = _fixture(tmp_path)
+    first = export_audit_samples(
+        source_dir=source_dir,
+        audit_path=audit_path,
+        output_dir=tmp_path / "first",
+        limit_per_category=2,
+    )
+    second = export_audit_samples(
+        source_dir=source_dir,
+        audit_path=audit_path,
+        output_dir=tmp_path / "second",
+        limit_per_category=2,
+    )
+
+    assert first["categories"]["exe_ans_disagreements"]["sample_ids"] == second[
+        "categories"
+    ]["exe_ans_disagreements"]["sample_ids"]
