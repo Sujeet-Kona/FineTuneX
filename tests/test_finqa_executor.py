@@ -66,7 +66,6 @@ def test_rounds_final_numeric_result_to_five_decimals():
     ],
 )
 
-
 def test_table_operations(operation, expected):
     table = [["revenue", "$ 10", "$ 20", "$ 30"]]
     assert execute_program(f"{operation}(revenue, none)", table) == expected
@@ -107,7 +106,6 @@ def test_table_operation_can_be_followed_by_arithmetic():
         "table_sum(missing, none)",
     ],
 )
-
 
 def test_invalid_execution_raises_error(program):
     table = [["revenue", "10", "20"]]
@@ -161,6 +159,7 @@ def test_reference_executor_matches_custom_table_aggregation():
     table = [["Revenue", "$ 100", "$ 200", "$ 300"]]
     program = "table_sum(Revenue, none)"
     assert reference_execute_program(program, table) == execute_program(program, table)
+
 
 def test_reference_executor_resolves_table_row_references():
     table = [["yes", "10", "20"]]
