@@ -41,6 +41,11 @@ MODEL_CONFIG_PATH = PROJECT_ROOT / "configs/model.yaml"
 TRAINING_CONFIG_PATH = PROJECT_ROOT / "configs/training.yaml"
 PREPROCESSING_CONFIG_PATH = PROJECT_ROOT / "configs/preprocessing.yaml"
 
+# FinQA passages reach 260 rows in the pinned test split, so this bound only has
+# to reject absurd payloads; the evidence token budget does the real truncation.
+MAX_PASSAGE_ROWS = 400
+MAX_TABLE_ROWS = 100
+
 
 class FinQARequest(BaseModel):
     """Inference-only request schema; gold labels are not accepted."""
@@ -49,9 +54,9 @@ class FinQARequest(BaseModel):
 
     id: str = Field(default="api-request", min_length=1, max_length=200)
     question: str = Field(min_length=1, max_length=4000)
-    pre_text: list[str] = Field(default_factory=list, max_length=40)
-    post_text: list[str] = Field(default_factory=list, max_length=40)
-    table: list[list[str]] = Field(default_factory=list, max_length=100)
+    pre_text: list[str] = Field(default_factory=list, max_length=MAX_PASSAGE_ROWS)
+    post_text: list[str] = Field(default_factory=list, max_length=MAX_PASSAGE_ROWS)
+    table: list[list[str]] = Field(default_factory=list, max_length=MAX_TABLE_ROWS)
 
     @field_validator("pre_text", "post_text")
     @classmethod

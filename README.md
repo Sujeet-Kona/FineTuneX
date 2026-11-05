@@ -218,6 +218,17 @@ Hugging Face mode and will fail at startup if the pinned model/tokenizer files
 are not already present in the mounted cache. The service listens on port
 8000; verify readiness with `curl http://localhost:8000/health/ready`.
 
+Validation status of the container path: **not built or run** — the Docker daemon
+is unavailable in the development environment, and the image targets NVIDIA CUDA,
+which this Apple Silicon host cannot exercise. The image's `transformers` bound was
+corrected to `>=5.22.1,<6.0` to match `pyproject.toml`, because the pipeline calls
+`from_pretrained(dtype=...)`, a Transformers 5 argument name; the previous `<5.0`
+bound would have failed at model load. A build-time assertion now checks the
+installed majors. One divergence remains open: the base image supplies torch 2.6.0
+while `pyproject.toml` requires `torch>=2.15,<3.0`, so the first real build must
+confirm the CUDA base image can serve these checkpoints. All MPS results in this
+repository come from running directly on the Mac, outside Docker.
+
 ## Engineering Principles
 
 - Preserve official benchmark splits.
@@ -237,7 +248,7 @@ are not already present in the mounted cache. The service listens on port
 - [x] Identified and reproduced the v3 training/inference evidence-budget mismatch.
 - [x] Implemented v4 target-independent prompt budgeting across preprocessing, evaluation, and API.
 - [x] Regenerate v4 train/validation artifacts and verify exact prompt parity on all 883 validation examples.
-- [ ] Train a fresh v4 LoRA adapter and run paired base/adapter evaluation after retrieval and baseline diagnostics.
+- [x] Train a fresh v4 LoRA adapter and run paired base/adapter evaluation after retrieval and baseline diagnostics.
 - [ ] Run a full 883-example validation comparison before making model-quality claims.
 - [x] Offline gold-evidence recall audit tooling (full validation report pending).
 - [x] FastAPI inference implementation (real checkpoint-backed smoke test pending).
@@ -256,6 +267,39 @@ The earlier v3 32-example pilot produced these results:
 
 The pilot showed improved program formatting and executability, but weak
 numerical reasoning. These measurements used the v3 prompt-budget policy and
-are not v4 results. V4 preprocessing and full prompt parity are complete. A fresh v4 adapter
-and full validation comparison are still required before updated model-quality
-claims can be made.
+the v3 exact-after-five-decimals scoring rule, which recorded correct answers as
+wrong when the dataset rendered `exe_ans` at six significant digits. They are
+kept only as history. V4 preprocessing and full prompt parity are complete.
+
+### v5 paired pilot under the corrected scoring rule (measured)
+
+Re-measured on the identical deterministic 32-record validation subset
+(`--limit 32 --sample-seed 42`, SHA-256 record-ID sampling), greedy generation,
+`max_new_tokens=128`, evidence budget 1024, prompt budget 1408, on Apple
+Silicon MPS. Both runs are scored with
+`six_significant_digits_of_exe_ans@6` and are checked for identical prompts,
+record order and input provenance by `scripts/compare_finqa_evaluations.py`.
+
+| Metric | Base model | v4 LoRA pilot | Delta |
+| --- | ---: | ---: | ---: |
+| Parse success | 15/32 (46.88%) | 32/32 (100%) | +53.12 pp |
+| Execution success | 8/32 (25.00%) | 32/32 (100%) | +75.00 pp |
+| Correct answers | 0/32 (0%) | 4/32 (12.50%) | +12.50 pp |
+| Evaluation wall time | 49.69 s | 38.84 s | — |
+
+Evidence: `artifacts/evaluation/v5-base-32/`,
+`artifacts/evaluation/v5-adapter-32/`, and
+`artifacts/evaluation/v5-paired-comparison.json`.
+
+Scope limits, stated deliberately:
+
+- This is a **32-optimizer-step pilot adapter**, not a trained model. It does
+  not support a claim about FineTuneX's accuracy on FinQA.
+- The base model's 0% is explained, not unexplained: it emits `add` almost
+  exclusively and separates multi-step programs with newlines instead of the
+  dataset's commas, so most outputs fail the strict program parser. The
+  evaluator marks parse and execution failures as incorrect rather than
+  silently accepting them.
+- All four adapter hits were inspected manually; each generated program is
+  byte-identical to its gold program, so they are not tolerance artifacts.
+- The full 883-example validation comparison has not been run.

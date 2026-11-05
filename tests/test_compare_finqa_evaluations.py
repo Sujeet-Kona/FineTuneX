@@ -63,6 +63,7 @@ def test_compares_only_identical_prompted_examples():
 
     assert result["identical_prompts_and_record_order"] is True
     assert result["examples"] == 2
+    assert result["answer_comparison"] == ANSWER_COMPARISON_RULE
     assert result["adapter_minus_base"]["answer_accuracy"] == 0.25
 
 

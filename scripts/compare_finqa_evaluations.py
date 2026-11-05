@@ -96,6 +96,8 @@ def compare(
         "comparison": "paired_base_vs_lora_finqa_validation",
         "examples": len(base_rows),
         "identical_prompts_and_record_order": True,
+        # Recorded so a reader can tell which scoring rule produced these numbers.
+        "answer_comparison": base_summary["scope"]["answer_comparison"],
         "base_metrics": base_metrics,
         "adapter_metrics": adapter_metrics,
         "adapter_minus_base": {

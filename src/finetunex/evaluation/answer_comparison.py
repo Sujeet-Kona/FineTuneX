@@ -8,8 +8,10 @@ against ``"41932.2"`` or ``26138609.0`` against ``"2.61386e+07"``.
 
 Normalising both sides to the dataset's own six-significant-digit rendering
 removes that false-negative class while keeping genuinely different financial
-answers distinct. Across all 8,281 pinned records every gold program reproduces
-``exe_ans`` under this rule.
+answers distinct. Every gold program in the 7,134 train and validation records
+reproduces ``exe_ans`` under this rule (see
+``experiments/finqa_gold_execution_report.json``); the 1,147 test records are
+deliberately excluded so the rule is never tuned against the test split.
 """
 
 from __future__ import annotations

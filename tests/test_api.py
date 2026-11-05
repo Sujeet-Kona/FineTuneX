@@ -151,6 +151,47 @@ def test_request_rejects_inconsistent_table_width(components):
     assert response.status_code == 422
 
 
+def test_accepts_long_passage_records_from_the_dataset(monkeypatch, components):
+    # Real FinQA examples exceed 40 passage rows; the prompt's token budget, not
+    # a row count, is what bounds the prompt.
+    monkeypatch.setattr(
+        api_module,
+        "generate_program",
+        lambda *_args, **_kwargs: {
+            "raw_output": "divide(125, 100)",
+            "normalized_output": "divide(125, 100)",
+            "prompt_tokens": 120,
+            "generated_tokens": 8,
+            "ended_with_eos": True,
+        },
+    )
+
+    payload = {
+        "question": "What is the ratio?",
+        "pre_text": [f"passage row {index}" for index in range(44)],
+        "table": [["Year", "Revenue"], ["2022", "100"], ["2023", "125"]],
+    }
+
+    with TestClient(create_app(components)) as client:
+        response = client.post("/v1/finqa/score", json=payload)
+
+    assert response.status_code == 200
+    assert response.json()["predicted_value"] == 1.25
+
+
+def test_rejects_passages_beyond_the_configured_bound(components):
+    payload = {
+        "question": "What is the ratio?",
+        "pre_text": ["row"] * (api_module.MAX_PASSAGE_ROWS + 1),
+        "table": [],
+    }
+
+    with TestClient(create_app(components)) as client:
+        response = client.post("/v1/finqa/score", json=payload)
+
+    assert response.status_code == 422
+
+
 def test_readiness_is_unavailable_before_startup():
     application = create_app()
     response = TestClient(application, raise_server_exceptions=False).get(

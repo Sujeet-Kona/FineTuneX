@@ -15,10 +15,15 @@ RUN python -c "import sys; assert (3, 11) <= sys.version_info[:2] < (3, 13), sys
     && python -m pip install --no-cache-dir --upgrade pip \
     && python -m pip install --no-cache-dir -e ".[api]" \
     && python -m pip install --no-cache-dir \
-        "transformers>=4.51.1,<5.0" \
+        "transformers>=5.22.1,<6.0" \
         "peft>=0.15,<1.0" \
         "accelerate>=1.5,<2.0" \
-        "safetensors>=0.5,<1.0"
+        "safetensors>=0.5,<1.0" \
+    && python -c "from importlib.metadata import version; \
+expected = {'transformers': 5, 'peft': 0, 'accelerate': 1, 'safetensors': 0}; \
+picked = {name: int(version(name).split('.')[0]) for name in expected}; \
+assert picked == expected, picked; \
+print('dependency majors match pyproject:', picked)"
 
 EXPOSE 8000
 
