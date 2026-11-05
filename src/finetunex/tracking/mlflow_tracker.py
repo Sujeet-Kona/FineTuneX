@@ -69,15 +69,20 @@ class MLflowTracker:
             for key, value in params.items()
             if value is not None
         }
-        if safe_params:
-            mlflow.log_params(safe_params)
+        try:
+            if safe_params:
+                mlflow.log_params(safe_params)
 
-        if self.settings.get("log_system_metrics", False):
-            mlflow.enable_system_metrics_logging()
+            if self.settings.get("log_system_metrics", False):
+                mlflow.enable_system_metrics_logging()
 
-        if self.artifacts.get("log_configurations", True):
-            for path in config_paths:
-                mlflow.log_artifact(str(path), artifact_path="config")
+            if self.artifacts.get("log_configurations", True):
+                for path in config_paths:
+                    mlflow.log_artifact(str(path), artifact_path="config")
+        except Exception:
+            mlflow.end_run(status="FAILED")
+            self.started = False
+            raise
 
     def log_epoch(self, record: dict[str, Any]) -> None:
         if not self.started or self.mlflow is None:
@@ -98,7 +103,14 @@ class MLflowTracker:
             step=int(record["epoch"]),
         )
 
-    def finish(self, *, checkpoint_dir: Path | None = None, status: str = "FINISHED") -> None:
+    def finish(
+        self,
+        *,
+        checkpoint_dir: Path | None = None,
+        status: str = "FINISHED",
+    ) -> None:
+        if status not in {"FINISHED", "FAILED", "KILLED"}:
+            raise ValueError("MLflow run status must be FINISHED, FAILED, or KILLED")
         if not self.started or self.mlflow is None:
             return
 
