@@ -114,9 +114,9 @@ def test_validation_provenance_accepts_matching_source_and_artifact(
     processed_dir.mkdir(parents=True)
     source_path = tmp_path / "data" / "processed" / "finqa" / "validation.jsonl"
     source_path.parent.mkdir(parents=True)
-    source_path.write_text('{"id":"record-1"}\\n', encoding="utf-8")
+    source_path.write_text('{"id":"record-1"}\n', encoding="utf-8")
     artifact_path = processed_dir / "validation.jsonl"
-    artifact_path.write_text('{"input_ids":[1,2]}\\n', encoding="utf-8")
+    artifact_path.write_text('{"input_ids":[1,2]}\n', encoding="utf-8")
 
     source_hash = hashlib.sha256(source_path.read_bytes()).hexdigest()
     artifact_hash = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
@@ -145,9 +145,9 @@ def test_validation_provenance_rejects_wrong_source_hash(tmp_path, monkeypatch):
     processed_dir.mkdir(parents=True)
     source_path = tmp_path / "data" / "processed" / "finqa" / "validation.jsonl"
     source_path.parent.mkdir(parents=True)
-    source_path.write_text('{"id":"record-1"}\\n', encoding="utf-8")
+    source_path.write_text('{"id":"record-1"}\n', encoding="utf-8")
     (processed_dir / "validation.jsonl").write_text(
-        '{"input_ids":[1,2]}\\n', encoding="utf-8"
+        '{"input_ids":[1,2]}\n', encoding="utf-8"
     )
     (processed_dir / "manifest.json").write_text(
         json.dumps(
@@ -181,7 +181,7 @@ def test_validation_loader_defaults_to_the_complete_file(tmp_path, monkeypatch):
         for index in range(3)
     ]
     path.write_text(
-        "".join(json.dumps(record) + "\\n" for record in records),
+        "".join(json.dumps(record) + "\n" for record in records),
         encoding="utf-8",
     )
     monkeypatch.setattr(evaluator, "VALIDATION_PATH", path)
@@ -204,7 +204,7 @@ def test_validation_sampling_is_reproducible_and_id_based(tmp_path, monkeypatch)
         for index in range(10)
     ]
     path.write_text(
-        "".join(json.dumps(record) + "\\n" for record in records),
+        "".join(json.dumps(record) + "\n" for record in records),
         encoding="utf-8",
     )
     monkeypatch.setattr(evaluator, "VALIDATION_PATH", path)
@@ -229,7 +229,7 @@ def test_validation_loader_rejects_duplicate_record_ids(tmp_path, monkeypatch):
         "exe_ans": "1",
     }
     path.write_text(
-        json.dumps(record) + "\\n" + json.dumps(record) + "\\n",
+        json.dumps(record) + "\n" + json.dumps(record) + "\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(evaluator, "VALIDATION_PATH", path)
