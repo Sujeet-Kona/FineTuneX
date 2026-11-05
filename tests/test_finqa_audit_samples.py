@@ -161,6 +161,7 @@ def test_sample_selection_is_deterministic(tmp_path):
         limit_per_category=2,
     )
 
-    assert first["categories"]["exe_ans_disagreements"]["sample_ids"] == second[
-        "categories"
-    ]["exe_ans_disagreements"]["sample_ids"]
+    assert (
+        first["categories"]["exe_ans_disagreements"]["sample_ids"]
+        == second["categories"]["exe_ans_disagreements"]["sample_ids"]
+    )
