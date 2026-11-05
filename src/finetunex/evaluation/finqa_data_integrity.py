@@ -587,8 +587,9 @@ def audit_files(paths: list[Path]) -> dict[str, Any]:
             "source_records_modified": False,
             "automatic_exclusions": 0,
             "human_answer_parser": (
-                "scalar numeric; explicit percentages allow ratio or percentage-point program output; "
-                "unmarked values use percentage-point scale only with question/step context; "
+                "scalar numeric; explicit percentages allow ratio or "
+                "percentage-point program output; unmarked values use "
+                "percentage-point scale only with question/step context; "
                 "magnitude units require manual review"
             ),
             "step_numeric_comparison": (
