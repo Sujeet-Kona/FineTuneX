@@ -47,7 +47,7 @@ def test_detects_program_answer_conflict():
     assert "program_human_answer_disagreement" in result["flags"]
 
 
-def test_identifies_rounded_exe_ans_when_answer_agrees():
+def test_flags_exe_ans_disagreement_when_human_answer_agrees_without_claiming_precision():
     result = audit_record(
         _record(
             program="multiply(423897556, 87.32)",
@@ -62,8 +62,9 @@ def test_identifies_rounded_exe_ans_when_answer_agrees():
         )
     )
     assert "program_exe_ans_disagreement" in result["flags"]
-    assert "likely_exe_ans_precision_or_format_issue" in result["flags"]
+    assert "exe_ans_disagreement_human_answer_consistent" in result["flags"]
     assert result["human_answer_match"] is True
+    assert result["classification"] == "requires_manual_review"
 
 
 def test_percentage_human_answer_is_normalized():
