@@ -92,7 +92,7 @@ def test_ambiguous_human_answer_is_not_guessed():
 def test_detects_program_step_mismatch_in_anomaly_examples():
     result = audit_record(
         _record(
-            program="add(100000, 92500), add(#0, #0), add(#1, const_3), divide(#2, const_2)",
+            program=(\n                "add(100000, 92500), add(#0, #0), add(#1, const_3), " \n                "divide(#2, const_2)"\n            ),
             exe_ans="192502",
             answer="91000",
             steps={
@@ -106,7 +106,9 @@ def test_detects_program_step_mismatch_in_anomaly_examples():
     assert "steps_program_disagreement" in result["flags"]
     assert "program_human_answer_disagreement" in result["flags"]
 
-\n\ndef test_text_result_is_compared_without_numeric_parsing():
+
+
+def test_text_result_is_compared_without_numeric_parsing():
     result = audit_record(
         _record(
             program="greater(10, 5)",
