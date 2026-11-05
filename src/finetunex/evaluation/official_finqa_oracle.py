@@ -1,6 +1,6 @@
 """Test oracle extracted from the official FinQA execution evaluator.
 
-Source: https://github.com/czyssrs/FinQA/blob/dfc5b72c01ee17c442d28d5201b82a1f4e95d5af/code/evaluate/evaluate.py
+Source: https://github.com/czyssrs/FinQA/blob/\ndfc5b72c01ee17c442d28d5201b82a1f4e95d5af/code/evaluate/evaluate.py
 Upstream file blob: 4829a4ca58a5725fb3f7a46b3b23b7f7e848a512
 
 This intentionally preserves the upstream execution path, including its
