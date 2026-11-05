@@ -460,6 +460,11 @@ def main() -> None:
                 )
 
         total = counters["total"]
+        sample_method = (
+            "sha256_record_id"
+            if total < 883
+            else "complete_official_order"
+        )
         summary = {
             "evaluation": "finetunex_finqa_generated_programs",
             "evaluation_schema_version": 1,
@@ -469,7 +474,7 @@ def main() -> None:
                 "examples_evaluated": total,
                 "full_validation_examples": 883,
                 "limited_run": total < 883,
-                "sample_method": "sha256_record_id" if total < 883 else "complete_official_order",
+                "sample_method": sample_method,
                 "sample_seed": args.sample_seed if total < 883 else None,
                 "max_new_tokens": args.max_new_tokens,
                 "evidence_budget": evidence_budget,
