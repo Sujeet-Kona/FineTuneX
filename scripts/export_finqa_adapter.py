@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 from pathlib import Path
 from typing import Any
@@ -26,7 +27,8 @@ def parse_args() -> argparse.Namespace:
 
 
 def _resolve(path: Path) -> Path:
-    return path.expanduser() if path.is_absolute() else PROJECT_ROOT / path
+    path = path.expanduser()
+    return path if path.is_absolute() else PROJECT_ROOT / path
 
 
 def _validate_destination(source: Path, destination: Path) -> None:
@@ -36,19 +38,31 @@ def _validate_destination(source: Path, destination: Path) -> None:
         raise FileExistsError(f"Export destination already exists: {destination}")
     if any(parent.is_symlink() for parent in (destination, *destination.parents)):
         raise ValueError("Export destination path cannot contain symlinks")
-    if destination.resolve() in {Path(destination.resolve().anchor), Path.home().resolve(), PROJECT_ROOT.resolve()}:
+
+    protected_paths = {
+        Path(destination.resolve().anchor),
+        Path.home().resolve(),
+        PROJECT_ROOT.resolve(),
+    }
+    if destination.resolve() in protected_paths:
         raise ValueError("Export destination cannot be a protected directory")
 
 
 def main() -> int:
     args = parse_args()
     source = _resolve(args.checkpoint)
-    destination = _resolve(args.output_dir or source.parent / f"{source.name}-merged")
+    destination = _resolve(
+        args.output_dir or source.parent / f"{source.name}-merged"
+    )
     _validate_destination(source, destination)
 
     model_config = load_yaml_config(PROJECT_ROOT / "configs/model.yaml")
     training_config = load_yaml_config(PROJECT_ROOT / "configs/training.yaml")
-    metadata: dict[str, Any] = _validate_checkpoint(source, model_config, training_config)
+    metadata: dict[str, Any] = _validate_checkpoint(
+        source,
+        model_config,
+        training_config,
+    )
 
     import torch
     from peft import PeftModel
@@ -57,7 +71,9 @@ def main() -> int:
     settings = model_config["model"]
     loading = settings["loading"]
     tokenizer_settings = settings["tokenizer"]
-    dtype = {"float16": torch.float16, "float32": torch.float32}[loading["dtype"]]
+    dtype = {"float16": torch.float16, "float32": torch.float32}[
+        loading["dtype"]
+    ]
 
     tokenizer = AutoTokenizer.from_pretrained(
         tokenizer_settings["name"],
@@ -97,11 +113,10 @@ def main() -> int:
             "validation_loss": metadata["validation_loss"],
         }
         (destination / "export_metadata.json").write_text(
-            json.dumps(export_metadata, indent=2, sort_keys=True) + "\n",
+            json.dumps(export_metadata, indent=2, sort_keys=True) + "\\n",
             encoding="utf-8",
         )
     except Exception:
-        import shutil
         shutil.rmtree(destination, ignore_errors=True)
         raise
 
