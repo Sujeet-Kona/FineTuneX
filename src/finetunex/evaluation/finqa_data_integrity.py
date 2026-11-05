@@ -279,7 +279,9 @@ def audit_record(record: dict[str, Any]) -> dict[str, Any]:
             result["human_answer_match"] = None
             result["flags"].append("human_answer_requires_manual_review")
         else:
-            answer_match = _human_answer_matches(\n                computed, str(record.get("answer", ""))\n            )
+            answer_match = _human_answer_matches(
+                computed, str(record.get("answer", ""))
+            )
             result["human_answer_match"] = answer_match
             if not answer_match:
                 result["flags"].append("program_human_answer_disagreement")
